@@ -24,9 +24,15 @@ Deadlock（异锁）**文字聊天双向翻译**小工具。
 到 [**Releases**](../../releases/latest) 下载 `deadlock-tongyi-players.zip`（约 36 MB），**不需要装 Python**：
 
 1. 解压到普通目录（别放 `Program Files`，会没有写权限）
-2. 双击 `tongyi_launch\START_HERE.bat`
+2. 双击 `tongyi_launch\START_HERE.bat`，它会生成一行 Steam 启动选项并复制到剪贴板。
+   粘到 Steam → 库 → 右键 Deadlock → 属性 → 启动选项（只需配这一次）
 3. 用 Deadlock Mod Manager 导入 `mod\tongyi-pak01_dir.vpk`
-4. 浏览器打开 `http://localhost:8791/settings` 填一次 DeepSeek API Key
+4. 先开一次游戏，再在浏览器打开 `http://localhost:8791/settings`，把 DeepSeek
+   API Key 粘进去保存
+
+第 4 步要在**游戏运行期间**做 —— 桥跟着游戏一起启动、游戏退出就关，平时端口是没开的。
+
+包里的 `README-zh.txt` 是完整中文说明（DMM 下载地址、游戏内设置面板、常见问题都在那）。
 
 ## 热键
 
@@ -67,7 +73,9 @@ python -m unittest discover -s tests -t .    # 205 个测试
 
 ## 注意
 
-* 需要一个翻译后端：默认 DeepSeek 云端，要自备 API Key；也能在游戏内 F8 面板切成
+* 需要一个翻译后端：默认 DeepSeek 云端，要自备 API Key（Key 只存在你自己电脑上，
+  也可以写进 `config.yaml`）；能在游戏内 F8 面板切成
   本机 Ollama（不出网）。
-* 翻译桥要开着才能翻（双击 `tongyi_launch\START_HERE.bat` 装好后，桥会跟着游戏一起启动）。
+* 翻译桥要开着才能翻，它跟着游戏一起启动、游戏退出就关 —— 所以配 Key、
+  看状态这类事都要在**游戏运行期间**做。
 * 配置和日志在 `%APPDATA%\deadlock-tongyi\`，不在程序目录里。
