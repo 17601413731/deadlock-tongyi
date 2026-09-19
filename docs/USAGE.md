@@ -24,6 +24,20 @@ translate:
   thinking: "off"              # 必须 off：DeepSeek 默认开思考模式，会让短句等到超时
 ```
 
+> **`thinking` 为什么必须 off**：DeepSeek **默认开思考模式且 effort=high**，一句 `mid no`
+> 会先产出一大段思维链，直接撞 `timeout_s`。而且思考模式下 `temperature` 被忽略、
+> `top_p` 被抬到 ≥0.95，本项目"温度固定 0"的设定全部失效。
+> 代码只对 DeepSeek 端点发 `thinking:{"type":"disabled"}`——别的兼容端点收到未知字段
+> 可能直接 400，所以按端点分流。
+
+> ⚠️ **模型 ID 会退役**：`deepseek-chat` / `deepseek-reasoner` 已于 2026-07-24 退役，
+> `deepseek-v4-flash` 于 2026-09-10 退役（旧 ID 仍被接受，但会按新模型计费）。
+> 现役只有 `deepseek-flash`（V4.1-Flash，推荐）和 `deepseek-v4-pro`。
+
+> ⚠️ **系统代理坑（代码已自动处理）**：如果机器上开着系统代理（例如 `127.0.0.1:10808`），
+> 注意 httpx **不读 Windows 的"绕过代理"列表**，会把 `http://127.0.0.1:11434` 也塞进代理，
+> 拿到假的 `HTTP 503`。代码里对本地地址强制 `trust_env=False` 直连，云端地址仍走代理。
+
 > 游戏内面板按 F8 也能切来源/模型（点了立刻生效）。`api_key` 留空 = "用游戏里
 > 填过的那份"；**别把占位符和环境变量同时用**，环境变量没设时占位符会盖掉已存的密钥。
 
