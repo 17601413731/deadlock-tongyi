@@ -1,0 +1,294 @@
+{
+ "Care": {
+  "labelEn": "Careful",
+  "labelZh": "小心",
+  "en": "Care!",
+  "zh": "小心！"
+ },
+ "BRB": {
+  "labelEn": "Be Right Back",
+  "labelZh": "马上回来",
+  "en": "Be right back!",
+  "zh": "我马上回来！"
+ },
+ "Stun": {
+  "labelEn": "Stun",
+  "labelZh": "眩晕",
+  "en": "Stun!",
+  "zh": "眩晕！"
+ },
+ "Help": {
+  "labelEn": "Help",
+  "labelZh": "帮助",
+  "en": "Need Help!",
+  "zh": "需要帮助！"
+ },
+ "Help_yellow": {
+  "en": "Need Help on Yellow!",
+  "zh": "黄路需要帮助！"
+ },
+ "Help_blue": {
+  "en": "Need Help on Blue!",
+  "zh": "蓝路需要帮助！"
+ },
+ "Help_purple": {
+  "en": "Need Help on Purple!",
+  "zh": "紫路需要帮助！"
+ },
+ "Help_green": {
+  "en": "Need Help on Green!",
+  "zh": "绿路上需要帮助！"
+ },
+ "Request_Follow": {
+  "en": "Come with Me!",
+  "zh": "跟我来！"
+ },
+ "gank": {
+  "en": "Going to Gank",
+  "zh": "准备抓人"
+ },
+ "Rejuv_Drop": {
+  "en": "Rejuv's Dropping",
+  "zh": "复生石掉落了",
+  "labelEn": "Rejuv's Dropping",
+  "labelZh": "复生石掉落了"
+ },
+ "need_cover": {
+  "en": "Cover me!",
+  "zh": "掩护我！",
+  "labelEn": "Cover Me",
+  "labelZh": "掩护我"
+ },
+ "nevermind": {
+  "en": "Nevermind",
+  "zh": "算了吧",
+  "labelEn": "Nevermind",
+  "labelZh": "算了吧"
+ },
+ "no_teamfight": {
+  "en": "I'm not ready for a teamfight",
+  "zh": "我还没准备好团战",
+  "labelEn": "Not Ready For Teamfight",
+  "labelZh": "没准备好团战"
+ },
+ "press_advantage": {
+  "en": "We need to press the advantage!",
+  "zh": "我们要乘胜追击！",
+  "labelEn": "Press The Advantage",
+  "labelZh": "乘胜追击"
+ },
+ "lets_hide": {
+  "en": "Let's hide here",
+  "zh": "我们在这躲躲",
+  "labelEn": "Let's Hide Here",
+  "labelZh": "我们在这躲躲"
+ },
+ "danger_area": {
+  "en": "It's dangerous here...",
+  "zh": "这里很危险…",
+  "labelEn": "It's Dangerous",
+  "labelZh": "有危险"
+ },
+ "clear_troopers": {
+  "en": "I'll deal with the troopers",
+  "zh": "我来对付步兵",
+  "labelEn": "I'll Clear Troopers",
+  "labelZh": "我来清理步兵"
+ },
+ "meet_here": {
+  "en": "Let's meet here",
+  "zh": "我们在这碰头吧",
+  "labelEn": "Meet Here",
+  "labelZh": "在这碰头吧"
+ },
+ "flank": {
+  "en": "I'll flank 'em",
+  "zh": "我来包抄他们",
+  "labelEn": "I'll Flank",
+  "labelZh": "我来包抄"
+ },
+ "leaving_area": {
+  "en": "I'm leaving the area!",
+  "zh": "我要离开这个区域了！",
+  "labelEn": "Leaving Area",
+  "labelZh": "离开区域"
+ },
+ "Push": {
+  "labelEn": "Push Lane",
+  "labelZh": "推进分路",
+  "en": "Push!",
+  "zh": "推进！"
+ },
+ "Missing": {
+  "en": "Missing!",
+  "zh": "敌人消失！"
+ },
+ "GoodJob": {
+  "labelEn": "Good Job",
+  "labelZh": "干得漂亮",
+  "en": "Good Job!",
+  "zh": "干得漂亮！"
+ },
+ "thanks": {
+  "labelEn": "Thanks",
+  "labelZh": "谢了",
+  "en": "Thanks!",
+  "zh": "谢了！"
+ },
+ "Go": {
+  "labelEn": "Go",
+  "labelZh": "上啊",
+  "en": "Go!",
+  "zh": "上啊！"
+ },
+ "OMW": {
+  "labelEn": "On my Way",
+  "labelZh": "来了",
+  "en": "On my way!",
+  "zh": "来了！"
+ },
+ "missing_hero": {
+  "labelEn": "Missing",
+  "labelZh": "敌人消失",
+  "en": "{s:param_1} is Missing",
+  "zh": "{s:param_1}不见了"
+ },
+ "missing_yellow": {
+  "labelEn": "Missing Yellow",
+  "labelZh": "黄路敌人消失",
+  "en": "Missing Yellow!",
+  "zh": "黄路敌人消失！"
+ },
+ "missing_blue": {
+  "labelEn": "Missing Blue",
+  "labelZh": "蓝路敌人消失",
+  "en": "Missing Blue!",
+  "zh": "蓝路敌人消失！"
+ },
+ "missing_green": {
+  "labelEn": "Missing Green",
+  "labelZh": "绿路敌人消失",
+  "en": "Missing Green!",
+  "zh": "绿路敌人消失！"
+ },
+ "missing_purple": {
+  "labelEn": "Missing Green",
+  "labelZh": "绿路敌人消失",
+  "en": "Missing Green!",
+  "zh": "绿路敌人消失！"
+ },
+ "GetBack": {
+  "labelEn": "Get Back",
+  "labelZh": "撤退",
+  "en": "Get Back!",
+  "zh": "撤退！"
+ },
+ "ImBack": {
+  "labelEn": "I'm Back",
+  "labelZh": "我回来了",
+  "en": "I'm Back",
+  "zh": "我回来了"
+ },
+ "GoingIn": {
+  "labelEn": "Going In",
+  "labelZh": "上了",
+  "en": "I'm going in!",
+  "zh": "我要上了！"
+ },
+ "StayTogether": {
+  "labelEn": "Stay Together",
+  "labelZh": "一起行动",
+  "en": "Stay Together",
+  "zh": "一起行动"
+ },
+ "Yes": {
+  "labelEn": "Yes!",
+  "labelZh": "好的！",
+  "en": "Affirmative!",
+  "zh": "没问题！"
+ },
+ "No": {
+  "labelEn": "No!",
+  "labelZh": "不！",
+  "en": "No!",
+  "zh": "不！"
+ },
+ "HoldUp": {
+  "labelEn": "Wait/Hold Up",
+  "labelZh": "等等/等一下",
+  "en": "Wait {s:param_1}",
+  "zh": "等待{s:param_1}"
+ },
+ "GoodGame": {
+  "labelEn": "Good Game",
+  "labelZh": "比赛很精彩",
+  "en": "Good Game!",
+  "zh": "比赛很精彩！"
+ },
+ "thanksGameOver": {
+  "labelEn": "Thanks",
+  "labelZh": "谢了",
+  "en": "Thanks!",
+  "zh": "谢了！"
+ },
+ "WellPlayed": {
+  "labelEn": "Well <br>Played",
+  "labelZh": "打得<br>很漂亮",
+  "en": "Well Played!",
+  "zh": "打得很漂亮！"
+ },
+ "GoodJobGameOver": {
+  "labelEn": "Good Job",
+  "labelZh": "干得漂亮",
+  "en": "Good Job!",
+  "zh": "干得漂亮！"
+ },
+ "Defend": {
+  "labelEn": "Defend Lane...",
+  "labelZh": "防守分路…",
+  "en": "Defend Lane!",
+  "zh": "防守分路！"
+ },
+ "Defend_Yellow": {
+  "en": "Defend Yellow",
+  "zh": "防守黄路"
+ },
+ "Defend_Blue": {
+  "en": "Defend Blue",
+  "zh": "防守蓝路"
+ },
+ "Defend_Green": {
+  "en": "Defend Green",
+  "zh": "防守绿路"
+ },
+ "Defend_Purple": {
+  "en": "Defend Green",
+  "zh": "防守绿路"
+ },
+ "HeadedToYellow": {
+  "en": "Headed to Yellow",
+  "zh": "往黄路走了"
+ },
+ "HeadedToBlue": {
+  "en": "Headed to Blue",
+  "zh": "往蓝路走了"
+ },
+ "HeadedToGreen": {
+  "en": "Headed to Green",
+  "zh": "往绿路走了"
+ },
+ "HeadedToPurple": {
+  "en": "Headed to Green",
+  "zh": "往绿路走了"
+ },
+ "HeadedToBase": {
+  "labelEn": "Headed To Base",
+  "labelZh": "往基地走了",
+  "en": "Headed To Base!",
+  "zh": "往基地走了！"
+ },
+ "headed_to_lane": {
+  "en": "Headed To Lane...",
+  "zh": "往分路走了…"
+ }
+}

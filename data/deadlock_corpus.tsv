@@ -1,0 +1,159 @@
+kind	zh	en
+slang	送	feed
+slang	送了	fed
+phrase	别送	stop feeding
+phrase	别送了	stop feeding
+phrase	一直送	keep feeding
+phrase	你在送	you're feeding
+slang	送人头	feeding kills
+phrase	送了全队	feeding the whole team
+slang	越塔	dive
+phrase	越塔杀他	dive him
+slang	抱团	group up
+phrase	抱团推	group up and push
+slang	开团	initiate
+phrase	别开团	don't initiate
+slang	抓人	gank
+slang	蹲人	camp them
+slang	绕后	flank
+phrase	他们在绕后	they're flanking
+phrase	撤退	get back
+phrase	撤	back
+phrase	上	go
+phrase	上啊	go
+phrase	推进	push
+phrase	推塔	push the guardian
+phrase	别浪	play safe
+phrase	稳住	hold
+phrase	等我	wait for me
+phrase	我来了	on my way
+phrase	跟我来	come with me
+phrase	掩护我	cover me
+phrase	小心	care
+phrase	小心绕后	care, they're flanking
+phrase	敌人消失	missing
+phrase	对面不见了	enemy missing
+term	魂瓮	urn
+term	灵瓮	urn
+phrase	抢魂瓮	contest the urn
+phrase	魂瓮要没了	urn is about to expire
+term	复生石	rejuvenator
+phrase	复生石掉了	rejuv is dropping
+slang	大怪	mid boss
+term	中区头目	mid boss
+phrase	打大怪	do mid boss
+term	卫士	guardian
+term	机甲	walker
+term	圣坛	shrine
+term	守护神	patron
+term	步兵	trooper
+slang	野怪	neutrals
+slang	打野	farm camps
+phrase	刷野	farm camps
+term	正补	last hit
+slang	补刀	last hit
+slang	反补	deny
+term	回收	deny
+term	魂魄	souls
+slang	经济	souls
+term	装备	item
+slang	出装	build
+term	技能点	ability points
+slang	大招	ult
+phrase	大好了	ult is ready
+phrase	没耐力	no stamina
+term	滑索	zipline
+term	商店	shop
+term	中路	mid
+term	黄路	yellow
+term	蓝路	blue
+term	绿路	green
+term	紫路	purple
+phrase	换线	swap lanes
+phrase	需要帮忙	need help
+phrase	漂亮	good job
+phrase	干得漂亮	good job
+phrase	打得好	good job
+phrase	谢了	thanks
+phrase	谢谢	thanks
+phrase	我的	my bad
+phrase	抱歉	sorry
+phrase	稳住别急	hold, don't rush
+phrase	一起上	go together
+alias	塔	guardian
+alias	大机器人	walker
+alias	机器人	walker
+alias	神坛	shrine
+alias	老家	patron
+alias	基地	patron
+alias	小兵	trooper
+alias	缆车	zipline
+alias	体力	stamina
+alias	爆头	headshot
+alias	复活石	rejuvenator
+alias	灵魂	souls
+alias	钱	souls
+alias	蹲点	camp
+alias	偷家	backdoor
+alias	反蹲	counter-gank
+alias	控住	stun
+alias	晕了	stunned
+alias	慢一下	slow
+alias	打断	interrupt
+alias	买装备	buy items
+alias	回城	go back to base
+alias	补给	heal up
+callout	我马上回来！	Be right back!
+callout	小心！	Care!
+callout	防守分路！	Defend Lane!
+callout	防守蓝路	Defend Blue
+callout	防守绿路	Defend Green
+callout	防守绿路	Defend Green
+callout	防守黄路	Defend Yellow
+callout	撤退！	Get Back!
+callout	上啊！	Go!
+callout	我要上了！	I'm going in!
+callout	比赛很精彩！	Good Game!
+callout	干得漂亮！	Good Job!
+callout	干得漂亮！	Good Job!
+callout	往基地走了！	Headed To Base!
+callout	往蓝路走了	Headed to Blue
+callout	往绿路走了	Headed to Green
+callout	往绿路走了	Headed to Green
+callout	往黄路走了	Headed to Yellow
+callout	需要帮助！	Need Help!
+callout	蓝路需要帮助！	Need Help on Blue!
+callout	绿路上需要帮助！	Need Help on Green!
+callout	紫路需要帮助！	Need Help on Purple!
+callout	黄路需要帮助！	Need Help on Yellow!
+callout	等待{s:param_1}	Wait {s:param_1}
+callout	我回来了	I'm Back
+callout	敌人消失！	Missing!
+callout	不！	No!
+callout	来了！	On my way!
+callout	推进！	Push!
+callout	复生石掉落了	Rejuv's Dropping
+callout	跟我来！	Come with Me!
+callout	一起行动	Stay Together
+callout	眩晕！	Stun!
+callout	打得很漂亮！	Well Played!
+callout	没问题！	Affirmative!
+callout	我来对付步兵	I'll deal with the troopers
+callout	这里很危险…	It's dangerous here...
+callout	我来包抄他们	I'll flank 'em
+callout	准备抓人	Going to Gank
+callout	往分路走了…	Headed To Lane...
+callout	我要离开这个区域了！	I'm leaving the area!
+callout	我们在这躲躲	Let's hide here
+callout	我们在这碰头吧	Let's meet here
+callout	蓝路敌人消失！	Missing Blue!
+callout	绿路敌人消失！	Missing Green!
+callout	{s:param_1}不见了	{s:param_1} is Missing
+callout	绿路敌人消失！	Missing Green!
+callout	黄路敌人消失！	Missing Yellow!
+callout	掩护我！	Cover me!
+callout	算了吧	Nevermind
+callout	我还没准备好团战	I'm not ready for a teamfight
+callout	我们要乘胜追击！	We need to press the advantage!
+callout	谢了！	Thanks!
+callout	谢了！	Thanks!

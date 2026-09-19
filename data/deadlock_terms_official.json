@@ -1,0 +1,102 @@
+{
+ "souls": {
+  "zh": "魂魄",
+  "token": "Citadel_Hero_Stats_Souls"
+ },
+ "last hit": {
+  "zh": "正补",
+  "token": "Citadel_LaneStats_LastHits"
+ },
+ "deny": {
+  "zh": "回收",
+  "token": "Citadel_Profile_Stats_Denies:f"
+ },
+ "ability points": {
+  "zh": "技能点",
+  "token": "guide_upgrades_killing_guardians_header"
+ },
+ "boon": {
+  "zh": "恩赐",
+  "token": "Citadel_Player_Level_PowerIncrease"
+ },
+ "imbue": {
+  "zh": "加强",
+  "token": "item_info_imbue"
+ },
+ "flex slot": {
+  "zh": "弹性槽位",
+  "token": "CitadelCategoryFlex"
+ },
+ "guardian": {
+  "zh": "卫士",
+  "token": "Citadel_Hud_KillFeedGuardian"
+ },
+ "walker": {
+  "zh": "机甲",
+  "token": "Citadel_Hud_KillFeedWalker"
+ },
+ "shrine": {
+  "zh": "圣坛",
+  "token": "Citadel_Hud_KillFeedShieldName"
+ },
+ "patron": {
+  "zh": "守护神",
+  "token": "Citadel_Hud_KillFeedTitan"
+ },
+ "urn": {
+  "zh": "灵瓮",
+  "token": "Citadel_HUD_IdolReturned"
+ },
+ "mid-boss": {
+  "zh": "中区头目",
+  "token": "Objective_MidBoss"
+ },
+ "rejuvenator": {
+  "zh": "复生石",
+  "token": "Item_Rejuvenator"
+ },
+ "trooper": {
+  "zh": "步兵",
+  "token": "Citadel_AttackerClass_CLASS_TROOPER"
+ },
+ "neutrals": {
+  "zh": "中立生物",
+  "token": "guide_neutrals_header"
+ },
+ "zipline": {
+  "zh": "滑索",
+  "token": "Citadel_ZiplineBoostDesc"
+ },
+ "stamina": {
+  "zh": "耐力",
+  "token": "extra_stamina_pickup_label"
+ },
+ "headshot": {
+  "zh": "头弹",
+  "token": "citadel_build_tag_headshots"
+ },
+ "lane": {
+  "zh": "对线",
+  "token": "Citadel_HeroBuilds_Lane"
+ },
+ "stun": {
+  "zh": "眩晕",
+  "token": "citadel_chatwheel_label_Stun"
+ },
+ "shop": {
+  "zh": "商店",
+  "token": "citadel_settings_shop"
+ },
+ "dash": {
+  "zh": "冲刺",
+  "token": "citadel_ability_dash"
+ },
+ "parry": {
+  "zh": "格挡",
+  "token": "citadel_ability_melee_parry"
+ },
+ "melee": {
+  "zh": "近战",
+  "token": "Citadel_ShopFilter_Melee"
+ }
+}

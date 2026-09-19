@@ -1,0 +1,43 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# ---- 构建产物 ----
+# PyInstaller 输出与中间产物（build_pkgs 里有十几 MB 的 .pkg/.toc/.pyz）
+build/
+build_pkgs/
+dist/
+dist_mod/
+# mod 编译暂存区：由 scripts/build_mod.py 生成，里面还有从游戏 vpk 反解出来的
+# vanilla 文件（Valve 的内容），不该进仓库。重新生成：
+#   python scripts/build_mod.py            编译 + 打包
+#   python scripts/stage_compile.py --pack 出 dist_mod\dlchat_local\pak01_dir.vpk
+build_mod/
+*.spec.bak
+
+# ---- 运行期产物（校准截图、崩溃现场、日志）----
+spike_out/
+logs/
+*.log
+config.local.yaml
+!build_log.txt
+
+# ---- 第三方专有二进制：不放仓库 ----
+# tools/ 装的是 Valve 的 CSDK 12 工具链（resourcecompiler）和 Source2Viewer。
+# 它们是 Valve 的版权文件、且 Source2Viewer-CLI.exe 单个就有 ~108 MB，
+# 超过 GitHub 单文件 100 MB 的硬限制，推上去必然失败。
+# 需要重新编译 mod 的人按 docs/mod-build.md 自己准备：
+#   tools/rc/resourcecompiler.exe + resourcecompiler.dll + tier0.dll ...  ← CSDK 12 的 game\bin_cs2\win64\
+#   tools/vrf/Source2Viewer-CLI.exe                                       ← https://github.com/ValveResourceFormat/ValveResourceFormat
+tools/
+
+# ---- 编辑器 ----
+.idea/*
+!.idea/.gitignore
+!.idea/profiles_settings.xml
+!.idea/modules.xml
+!.idea/*.iml

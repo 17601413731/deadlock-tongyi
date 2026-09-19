@@ -1,0 +1,15 @@
+# 核心依赖（Windows）
+PySide6>=6.6
+openai>=1.0
+pydantic>=2.0
+PyYAML>=6.0
+numpy>=1.24
+Pillow>=10.0
+mss>=9.0
+pyperclip>=1.8
+keyboard>=0.13.5
+pywin32>=306
+
+# OCR 来源（可选，但推荐装：控制台日志不一定能拿到聊天）
+rapidocr>=3.0
+dxcam

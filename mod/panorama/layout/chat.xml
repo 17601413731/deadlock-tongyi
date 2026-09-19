@@ -1,0 +1,206 @@
+<!--
+	chat.xml — Deadlock 聊天面板布局（通译 / Tongyi 的覆盖版本）
+
+	基线来自游戏自身的 panorama/layout/chat.vxml_c（用 Source 2 Viewer 反解回 XML），
+	除下面 4 处标注 [通译] 的改动外，结构与官方完全一致；官方结构一旦更新，
+	用 scripts/decompile_layouts.py 重新反解后照抄即可。
+
+	游戏的聊天行是 C++ 侧按 <snippets> 里的模板实例化出来的，所以这里只负责：
+	  · 挂上我们自己的样式与脚本
+	  · 声明一个隐藏 HTML 面板当作"和本地 Python 桥通信"的通道
+	    （Deadlock 移除了 $.AsyncWebRequest，运行时 CreatePanel("HTML") 也拿不到可用面板，
+	      必须在布局里用 <HTML> 标签声明 —— 这是实测踩出来的两个硬约束）
+	  · 放一个状态标签，把桥的连接状态/转换结果就地显示给玩家
+-->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/citadel_base_styles.vcss_c" />
+		<include src="s2r://panorama/styles/chat.vcss_c" />
+		<!-- [通译] -->
+		<include src="s2r://panorama/styles/dlchat.vcss_c" />
+	</styles>
+	<!-- [通译] -->
+	<scripts>
+		<include src="s2r://panorama/scripts/dlchat.vjs_c" />
+	</scripts>
+	<snippets>
+		<snippet name="ChatMessageSource">
+			<Panel>
+				<Label class="ChannelName" text="[{s:channel_name}]" />
+				<Label class="SenderName" text="{s:sender_name}" />
+			</Panel>
+		</snippet>
+		<snippet name="ChatMessageContents_Text">
+			<Panel class="Text">
+				<Label text="{s:message_text}" />
+			</Panel>
+		</snippet>
+		<snippet name="ChatMessageContents_Ping">
+			<Panel class="Ping">
+				<Label id="PingLabel" text="{s:ping_text}" />
+			</Panel>
+		</snippet>
+		<snippet name="ChatMessageSender_HeroImage">
+			<Panel class="SenderHeroImage">
+				<CitadelHeroImage id="HeroImage" heroimagestyle="small" />
+			</Panel>
+		</snippet>
+		<snippet name="ChatMessageSender_AvatarImage">
+			<Panel class="SenderAvatarImage">
+				<CitadelAvatarImage id="AvatarImage" />
+			</Panel>
+		</snippet>
+		<snippet name="ChatMessageSender_LocalClient">
+			<Panel class="SenderLocalClient" />
+		</snippet>
+		<snippet name="ChatMessage">
+			<Panel class="ChatMessage Expired">
+				<Panel id="SenderImage" />
+				<Panel class="MessageBody">
+					<Panel id="MessageSource" />
+					<Panel id="MessageContents" />
+				</Panel>
+			</Panel>
+		</snippet>
+	</snippets>
+	<CitadelChat defaultfocus="ChatInput" hittest="false">
+		<Panel id="ChatLinesArea" hittest="false">
+			<Panel class="ChatLinesWrapper" hittest="false">
+				<Panel id="ChatMessages" hittest="false" />
+			</Panel>
+		</Panel>
+		<Label class="ChatDisabledLabel" text="#Citadel_Hud_ChatDisabled" hittest="false" />
+		<!-- [通译] 状态提示单独占一行放在输入框上方，避免压住输入框里的字。
+		     初值写死成 通译：布局一旦生效就会显示，用来区分"布局没生效"和"脚本没跑" -->
+		<Label id="DLChatStatus" class="DLChatStatus" text="通译" hittest="false" />
+		<Panel id="ChatControls">
+			<Label id="ChatTargetLabel" text="#citadel_chat_placeholder" />
+			<TextEntry id="ChatInput" oninputsubmit="CitadelChatInputSubmitted();" onblur="CitadelChatInputBlur();" placeholder="" maxchars="1024" />
+			<!-- [通译] 状态灯 + 设置入口：就放在输入框同一行，不占额外空间 -->
+			<Panel id="DLChatDot" class="DLChatDot" hittest="false" />
+			<Button id="DLChatGear" class="DLChatGear" onactivate="DLChatOpenSettings();">
+				<Label text="设置" />
+			</Button>
+		</Panel>
+		<!-- [通译] 与本地桥通信的隐藏面板 -->
+		<HTML id="DLChatBridge" class="DLChatBridge" />
+
+		<!-- [通译] 游戏内设置面板。交互以鼠标为主（对局里可能没有指针，
+		     所以每一整行也可点，按钮都能点；键盘只在个别版本可用，不作为主路径）。
+		     开关/循环全部本地即时生效，只有「保存并生效」和「试翻」会走网络。 -->
+		<Panel id="DLChatSettings" class="DLChatSettings" hittest="true">
+			<Panel class="DLChatSetHeader">
+				<Label class="DLChatSetTitle" text="通译 · 聊天翻译设置" />
+				<Button id="DLChatSetClose" class="DLChatSetClose" onactivate="DLChatCloseSettings();">
+					<Label text="关闭" />
+				</Button>
+			</Panel>
+
+			<Panel class="DLChatSetBody">
+				<Panel id="DLChatSetRow1" class="DLChatSetRow" onmouseactivate="DLChatToggle('receive_enabled');">
+					<Label class="DLChatSetKey" text="翻译收到的消息（英 → 中）" />
+					<Button id="DLChatSet_receive" class="DLChatSetVal" onactivate="DLChatToggle('receive_enabled');">
+						<Label id="DLChatSet_receive_l" text="开" />
+					</Button>
+				</Panel>
+				<Panel id="DLChatSetRow2" class="DLChatSetRow" onmouseactivate="DLChatToggle('send_enabled');">
+					<Label class="DLChatSetKey" text="中文输入转英文（中 → 英）" />
+					<Button id="DLChatSet_send" class="DLChatSetVal" onactivate="DLChatToggle('send_enabled');">
+						<Label id="DLChatSet_send_l" text="开" />
+					</Button>
+				</Panel>
+				<Panel id="DLChatSetRow3" class="DLChatSetRow" onmouseactivate="DLChatCycle('display_mode');">
+					<Label class="DLChatSetKey" text="译文显示（收到的消息）" />
+					<Button id="DLChatSet_display" class="DLChatSetVal" onactivate="DLChatCycle('display_mode');">
+						<Label id="DLChatSet_display_l" text="双语" />
+					</Button>
+				</Panel>
+				<!-- [dlchat] 我打出去的消息：只发英文，还是中英都留在输入框里一起发 -->
+				<Panel id="DLChatSetRowOut" class="DLChatSetRow" onmouseactivate="DLChatCycle('outgoing_mode');">
+					<Label class="DLChatSetKey" text="我发出去的消息" />
+					<Button id="DLChatSet_outgoing" class="DLChatSetVal" onactivate="DLChatCycle('outgoing_mode');">
+						<Label id="DLChatSet_outgoing_l" text="中英都发" />
+					</Button>
+				</Panel>
+				<!-- [dlchat] 双语模式下中英之间拼什么。三种都留出来：竖线在游戏字体里
+				     到底渲染成什么样只能进游戏看，不对就点一下换下一个。 -->
+				<Panel id="DLChatSetRowSep" class="DLChatSetRow" onmouseactivate="DLChatCycle('separator');">
+					<Label class="DLChatSetKey" text="中英之间的分隔符" />
+					<Button id="DLChatSet_sep" class="DLChatSetVal" onactivate="DLChatCycle('separator');">
+						<Label id="DLChatSet_sep_l" text="中文 | 英文" />
+					</Button>
+				</Panel>
+				<Panel id="DLChatSetRow4" class="DLChatSetRow" onmouseactivate="DLChatToggle('show_original_on_hover');">
+					<Label class="DLChatSetKey" text="悬停显示英文原文（双语模式下无效）" />
+					<Button id="DLChatSet_hover" class="DLChatSetVal" onactivate="DLChatToggle('show_original_on_hover');">
+						<Label id="DLChatSet_hover_l" text="开" />
+					</Button>
+				</Panel>
+				<Panel id="DLChatSetRow5" class="DLChatSetRow" onmouseactivate="DLChatCycle('trigger');">
+					<Label class="DLChatSetKey" text="触发键" />
+					<Button id="DLChatSet_trigger" class="DLChatSetVal" onactivate="DLChatCycle('trigger');">
+						<Label id="DLChatSet_trigger_l" text="两下空格" />
+					</Button>
+				</Panel>
+				<!-- [dlchat] 翻译来源：本地 Ollama（不出网）/ DeepSeek 云端（聊天内容会出网）。
+				     放在「模型常驻」之前：来源决定下面那个模型列表里有什么，也决定常驻有没有意义。 -->
+				<Panel id="DLChatSetRowProvider" class="DLChatSetRow" onmouseactivate="DLChatCycle('provider');">
+					<Label class="DLChatSetKey" text="翻译来源" />
+					<Button id="DLChatSet_provider" class="DLChatSetVal" onactivate="DLChatCycle('provider');">
+						<Label id="DLChatSet_provider_l" text="本地 Ollama" />
+					</Button>
+				</Panel>
+				<Panel id="DLChatSetRow6" class="DLChatSetRow" onmouseactivate="DLChatCycle('keep_alive');">
+					<Label class="DLChatSetKey" text="模型常驻" />
+					<Button id="DLChatSet_keep" class="DLChatSetVal" onactivate="DLChatCycle('keep_alive');">
+						<Label id="DLChatSet_keep_l" text="60m" />
+					</Button>
+				</Panel>
+				<Panel id="DLChatSetRow7" class="DLChatSetRow" onmouseactivate="DLChatToggle('glossary');">
+					<Label class="DLChatSetKey" text="术语表（英雄/物品名保护）" />
+					<Button id="DLChatSet_glossary" class="DLChatSetVal" onactivate="DLChatToggle('glossary');">
+						<Label id="DLChatSet_glossary_l" text="开" />
+					</Button>
+				</Panel>
+
+				<!-- [dlchat] 模型下拉：引擎没有原生 DropDown（layout.xsd 里查过了），
+				     所以用 Button + 列表自己做。全是已验证可点的 Button，只依赖鼠标。 -->
+				<Panel class="DLChatSetRow DLChatSetRowTall">
+					<Label class="DLChatSetKey" text="翻译模型" />
+					<Button id="DLChatSetModelBtn" class="DLChatSetVal DLChatSetModelBtn"
+					        onactivate="DLChatToggleModels();">
+						<Label id="DLChatSetModelLabel" text="读取中…" />
+					</Button>
+				</Panel>
+				<Panel id="DLChatSetModelList" class="DLChatSetModelList" />
+
+				<Label id="DLChatSetStatus" class="DLChatSetStatus" text="读取中…" />
+				<Label id="DLChatSetTest" class="DLChatSetTest" text="" />
+				<!-- [dlchat] 最近一次失败的原因：状态行那句提示几秒就没了，打团时根本
+				     顾不上看。这一行留着，直到下一次翻译成功才消失 —— 否则你只知道
+				     "刚才没翻出来"，不知道是没配 Key、被限流、还是桥没开。 -->
+				<Panel id="DLChatSetFailRow" class="DLChatSetRow DLChatSetFailRow">
+					<Label class="DLChatSetKey" text="最近错误" />
+					<Label id="DLChatSetFail" class="DLChatSetFailText" text="" />
+				</Panel>
+				<Label class="DLChatSetLegend" text="点击右侧开关/模型切换 · 保存后立即生效" />
+			</Panel>
+
+			<Panel class="DLChatSetFooter">
+				<Button id="DLChatSetSave" class="DLChatBtnPrimary" onactivate="DLChatSaveSettings();">
+					<Label text="保存并生效" />
+				</Button>
+				<Button id="DLChatSetTestBtn" class="DLChatBtn" onactivate="DLChatTestSettings();">
+					<Label text="试翻一句" />
+				</Button>
+				<!-- [dlchat] 翻错了/超时了的补救手段（桌面版有 Alt+R，mod 之前没有） -->
+				<Button id="DLChatSetRetranslate" class="DLChatBtn" onactivate="DLChatRetranslateLast();">
+					<Label text="重译最近一条" />
+				</Button>
+				<Button id="DLChatSetReload" class="DLChatBtn" onactivate="DLChatReloadSettings();">
+					<Label text="重新读取" />
+				</Button>
+			</Panel>
+		</Panel>
+	</CitadelChat>
+</root>

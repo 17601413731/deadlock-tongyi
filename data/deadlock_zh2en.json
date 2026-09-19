@@ -1,0 +1,418 @@
+{
+ "送": {
+  "en": "feed",
+  "kind": "slang"
+ },
+ "送了": {
+  "en": "fed",
+  "kind": "slang"
+ },
+ "别送": {
+  "en": "stop feeding",
+  "kind": "phrase"
+ },
+ "别送了": {
+  "en": "stop feeding",
+  "kind": "phrase"
+ },
+ "一直送": {
+  "en": "keep feeding",
+  "kind": "phrase"
+ },
+ "你在送": {
+  "en": "you're feeding",
+  "kind": "phrase"
+ },
+ "送人头": {
+  "en": "feeding kills",
+  "kind": "slang"
+ },
+ "送了全队": {
+  "en": "feeding the whole team",
+  "kind": "phrase"
+ },
+ "越塔": {
+  "en": "dive",
+  "kind": "slang"
+ },
+ "越塔杀他": {
+  "en": "dive him",
+  "kind": "phrase"
+ },
+ "抱团": {
+  "en": "group up",
+  "kind": "slang"
+ },
+ "抱团推": {
+  "en": "group up and push",
+  "kind": "phrase"
+ },
+ "开团": {
+  "en": "initiate",
+  "kind": "slang"
+ },
+ "别开团": {
+  "en": "don't initiate",
+  "kind": "phrase"
+ },
+ "抓人": {
+  "en": "gank",
+  "kind": "slang"
+ },
+ "蹲人": {
+  "en": "camp them",
+  "kind": "slang"
+ },
+ "绕后": {
+  "en": "flank",
+  "kind": "slang"
+ },
+ "他们在绕后": {
+  "en": "they're flanking",
+  "kind": "phrase"
+ },
+ "撤退": {
+  "en": "get back",
+  "kind": "phrase"
+ },
+ "撤": {
+  "en": "back",
+  "kind": "phrase"
+ },
+ "上": {
+  "en": "go",
+  "kind": "phrase"
+ },
+ "上啊": {
+  "en": "go",
+  "kind": "phrase"
+ },
+ "推进": {
+  "en": "push",
+  "kind": "phrase"
+ },
+ "推塔": {
+  "en": "push the guardian",
+  "kind": "phrase"
+ },
+ "别浪": {
+  "en": "play safe",
+  "kind": "phrase"
+ },
+ "稳住": {
+  "en": "hold",
+  "kind": "phrase"
+ },
+ "等我": {
+  "en": "wait for me",
+  "kind": "phrase"
+ },
+ "我来了": {
+  "en": "on my way",
+  "kind": "phrase"
+ },
+ "跟我来": {
+  "en": "come with me",
+  "kind": "phrase"
+ },
+ "掩护我": {
+  "en": "cover me",
+  "kind": "phrase"
+ },
+ "小心": {
+  "en": "care",
+  "kind": "phrase"
+ },
+ "小心绕后": {
+  "en": "care, they're flanking",
+  "kind": "phrase"
+ },
+ "敌人消失": {
+  "en": "missing",
+  "kind": "phrase"
+ },
+ "对面不见了": {
+  "en": "enemy missing",
+  "kind": "phrase"
+ },
+ "魂瓮": {
+  "en": "urn",
+  "kind": "term"
+ },
+ "灵瓮": {
+  "en": "urn",
+  "kind": "term"
+ },
+ "抢魂瓮": {
+  "en": "contest the urn",
+  "kind": "phrase"
+ },
+ "魂瓮要没了": {
+  "en": "urn is about to expire",
+  "kind": "phrase"
+ },
+ "复生石": {
+  "en": "rejuvenator",
+  "kind": "term"
+ },
+ "复生石掉了": {
+  "en": "rejuv is dropping",
+  "kind": "phrase"
+ },
+ "大怪": {
+  "en": "mid boss",
+  "kind": "slang"
+ },
+ "中区头目": {
+  "en": "mid boss",
+  "kind": "term"
+ },
+ "打大怪": {
+  "en": "do mid boss",
+  "kind": "phrase"
+ },
+ "卫士": {
+  "en": "guardian",
+  "kind": "term"
+ },
+ "机甲": {
+  "en": "walker",
+  "kind": "term"
+ },
+ "圣坛": {
+  "en": "shrine",
+  "kind": "term"
+ },
+ "守护神": {
+  "en": "patron",
+  "kind": "term"
+ },
+ "步兵": {
+  "en": "trooper",
+  "kind": "term"
+ },
+ "野怪": {
+  "en": "neutrals",
+  "kind": "slang"
+ },
+ "打野": {
+  "en": "farm camps",
+  "kind": "slang"
+ },
+ "刷野": {
+  "en": "farm camps",
+  "kind": "phrase"
+ },
+ "正补": {
+  "en": "last hit",
+  "kind": "term"
+ },
+ "补刀": {
+  "en": "last hit",
+  "kind": "slang"
+ },
+ "反补": {
+  "en": "deny",
+  "kind": "slang"
+ },
+ "回收": {
+  "en": "deny",
+  "kind": "term"
+ },
+ "魂魄": {
+  "en": "souls",
+  "kind": "term"
+ },
+ "经济": {
+  "en": "souls",
+  "kind": "slang"
+ },
+ "装备": {
+  "en": "item",
+  "kind": "term"
+ },
+ "出装": {
+  "en": "build",
+  "kind": "slang"
+ },
+ "技能点": {
+  "en": "ability points",
+  "kind": "term"
+ },
+ "大招": {
+  "en": "ult",
+  "kind": "slang"
+ },
+ "大好了": {
+  "en": "ult is ready",
+  "kind": "phrase"
+ },
+ "没耐力": {
+  "en": "no stamina",
+  "kind": "phrase"
+ },
+ "滑索": {
+  "en": "zipline",
+  "kind": "term"
+ },
+ "商店": {
+  "en": "shop",
+  "kind": "term"
+ },
+ "中路": {
+  "en": "mid",
+  "kind": "term"
+ },
+ "黄路": {
+  "en": "yellow",
+  "kind": "term"
+ },
+ "蓝路": {
+  "en": "blue",
+  "kind": "term"
+ },
+ "绿路": {
+  "en": "green",
+  "kind": "term"
+ },
+ "紫路": {
+  "en": "purple",
+  "kind": "term"
+ },
+ "换线": {
+  "en": "swap lanes",
+  "kind": "phrase"
+ },
+ "需要帮忙": {
+  "en": "need help",
+  "kind": "phrase"
+ },
+ "漂亮": {
+  "en": "good job",
+  "kind": "phrase"
+ },
+ "干得漂亮": {
+  "en": "good job",
+  "kind": "phrase"
+ },
+ "打得好": {
+  "en": "good job",
+  "kind": "phrase"
+ },
+ "谢了": {
+  "en": "thanks",
+  "kind": "phrase"
+ },
+ "谢谢": {
+  "en": "thanks",
+  "kind": "phrase"
+ },
+ "我的": {
+  "en": "my bad",
+  "kind": "phrase"
+ },
+ "抱歉": {
+  "en": "sorry",
+  "kind": "phrase"
+ },
+ "稳住别急": {
+  "en": "hold, don't rush",
+  "kind": "phrase"
+ },
+ "一起上": {
+  "en": "go together",
+  "kind": "phrase"
+ },
+ "塔": {
+  "en": "guardian",
+  "kind": "alias"
+ },
+ "大机器人": {
+  "en": "walker",
+  "kind": "alias"
+ },
+ "机器人": {
+  "en": "walker",
+  "kind": "alias"
+ },
+ "神坛": {
+  "en": "shrine",
+  "kind": "alias"
+ },
+ "老家": {
+  "en": "patron",
+  "kind": "alias"
+ },
+ "基地": {
+  "en": "patron",
+  "kind": "alias"
+ },
+ "小兵": {
+  "en": "trooper",
+  "kind": "alias"
+ },
+ "缆车": {
+  "en": "zipline",
+  "kind": "alias"
+ },
+ "体力": {
+  "en": "stamina",
+  "kind": "alias"
+ },
+ "爆头": {
+  "en": "headshot",
+  "kind": "alias"
+ },
+ "复活石": {
+  "en": "rejuvenator",
+  "kind": "alias"
+ },
+ "灵魂": {
+  "en": "souls",
+  "kind": "alias"
+ },
+ "钱": {
+  "en": "souls",
+  "kind": "alias"
+ },
+ "蹲点": {
+  "en": "camp",
+  "kind": "alias"
+ },
+ "偷家": {
+  "en": "backdoor",
+  "kind": "alias"
+ },
+ "反蹲": {
+  "en": "counter-gank",
+  "kind": "alias"
+ },
+ "控住": {
+  "en": "stun",
+  "kind": "alias"
+ },
+ "晕了": {
+  "en": "stunned",
+  "kind": "alias"
+ },
+ "慢一下": {
+  "en": "slow",
+  "kind": "alias"
+ },
+ "打断": {
+  "en": "interrupt",
+  "kind": "alias"
+ },
+ "买装备": {
+  "en": "buy items",
+  "kind": "alias"
+ },
+ "回城": {
+  "en": "go back to base",
+  "kind": "alias"
+ },
+ "补给": {
+  "en": "heal up",
+  "kind": "alias"
+ }
+}

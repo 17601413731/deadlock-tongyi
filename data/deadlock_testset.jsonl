@@ -1,0 +1,30 @@
+{"zh": "别送了", "expect": ["feeding"]}
+{"zh": "你一直送，都已经0-10了", "expect": ["feeding"]}
+{"zh": "别送了，行吗？你一直送，都已经0-10了。", "expect": ["feeding"]}
+{"zh": "中路没人", "expect": ["mid"]}
+{"zh": "小心对面绕后", "expect": ["flank"]}
+{"zh": "我来了", "expect": ["on my way"]}
+{"zh": "抱团推进", "expect": ["group up"]}
+{"zh": "等我大招", "expect": ["ult"]}
+{"zh": "魂瓮要没了", "expect": ["urn"]}
+{"zh": "复生石掉了", "expect": ["rejuv"]}
+{"zh": "打大怪", "expect": ["mid boss"]}
+{"zh": "越塔杀他", "expect": ["dive"]}
+{"zh": "撤退", "expect": ["back"]}
+{"zh": "别浪", "expect": ["safe"]}
+{"zh": "我残血了", "expect": ["low"]}
+{"zh": "机甲在推", "expect": ["walker"]}
+{"zh": "别开团", "expect": ["initiate"]}
+{"zh": "跟我来", "expect": ["come with me"]}
+{"zh": "掩护我", "expect": ["cover me"]}
+{"zh": "他们在打野", "expect": ["camps"]}
+{"zh": "反补一下", "expect": ["deny"]}
+{"zh": "补刀别漏", "expect": ["last hit"]}
+{"zh": "谢了", "expect": ["thanks"]}
+{"zh": "干得漂亮", "expect": ["good job"]}
+{"zh": "我的", "expect": ["my bad"]}
+{"zh": "一起上", "expect": ["go"]}
+{"zh": "稳住别急", "expect": ["hold"]}
+{"zh": "黄路需要帮忙", "expect": ["help"]}
+{"zh": "换线吧", "expect": ["swap"]}
+{"zh": "他们圣坛没了", "expect": ["shrine"]}

@@ -1,0 +1,19 @@
+# 统一换行：仓库里一律 LF，检出到 Windows 时脚本类自动转 CRLF。
+# 不加这个的话，git 会把 LF 转成 CRLF 并在每次 status 时刷一堆 warning，
+# 而且 .bat 在别人机器上可能因为换行不一致出现 cmd 解析问题。
+* text=auto eol=lf
+
+# cmd 批处理必须是 CRLF，否则某些 Windows 环境下 cmd 会把行尾读错
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制：不做任何换行转换
+*.png binary
+*.ico binary
+*.vpk binary
+*.bin binary
+*.exe binary
+*.dll binary
+*.zip binary
+*.pyd binary
+*.pyc binary

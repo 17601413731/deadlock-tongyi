@@ -1,0 +1,56 @@
+<!--
+	citadel_hud_top_bar_chat.xml — 头顶气泡聊天布局（通译 / Tongyi 的覆盖版本）
+
+	这才是玩家在对局中真正看到的聊天显示区（英雄栏下方的气泡）。基线同样是官方
+	布局反解出来的 XML，改动与 chat.xml 一致：挂样式/脚本 + 声明隐藏 HTML 桥面板 +
+	状态标签。
+
+	气泡里的文本节点 id 是 MessageText（在 ChatMessage 模板的 .TextContainer 里）。
+-->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/citadel_base_styles.vcss_c" />
+		<include src="s2r://panorama/styles/citadel_hud_top_bar_chat.vcss_c" />
+		<!-- [通译] -->
+		<include src="s2r://panorama/styles/dlchat.vcss_c" />
+	</styles>
+	<!-- [通译] -->
+	<scripts>
+		<include src="s2r://panorama/scripts/dlchat.vjs_c" />
+	</scripts>
+	<snippets>
+		<snippet name="ChatMessage">
+			<Panel class="ChatMessage">
+				<Panel id="ChatArrow" />
+				<Panel id="MessageContents">
+					<Panel class="ChatBubble">
+						<Panel class="TextContainer">
+							<Panel class="bubble_bg" />
+							<Label id="MessageText" />
+						</Panel>
+						<CitadelHeroImage id="HeroImage" heroimagestyle="small" />
+					</Panel>
+					<Panel class="ResponsesContainer">
+						<Panel class="ResponsesBackground">
+							<Panel class="ThumbsUpIcon" />
+						</Panel>
+						<Panel id="ResponseHeroes" />
+					</Panel>
+				</Panel>
+			</Panel>
+		</snippet>
+		<snippet name="ResponseHero">
+			<Panel class="ResponseHero">
+				<CitadelHeroImage id="ResponseHeroImage" heroimagestyle="small" />
+			</Panel>
+		</snippet>
+	</snippets>
+	<CitadelHudTopBarChat hittest="false">
+		<GlobalClassListener classes="gDetailView gScoreboardOpen" />
+		<Panel id="Messages" hittest="false" />
+		<!-- [dlchat] 这里**不放**状态标签：对局中头顶常驻一行字太吵，而且同一个提示
+		     会在两个布局里各显示一份。状态只在聊天输入框那一行显示。
+		     隐藏 HTML 桥面板必须保留（翻译消息要用这条通道）。 -->
+		<HTML id="DLChatBridge" class="DLChatBridge" />
+	</CitadelHudTopBarChat>
+</root>

@@ -1,0 +1,130 @@
+# Deadlock 文字聊天双向翻译 —— 运行配置
+# 改完直接重启程序即可；界面上的"框选聊天区域"会把结果写回这里。
+
+app:
+  enable_receive: true      # 英文聊天 -> 中文显示
+  enable_send: true         # 我打中文 -> 英文注入
+  read_only: true           # true=绝不向游戏注入按键，英文只进剪贴板（安全默认）
+  my_name: ""               # 你的游戏内名字，用于跳过自己发的消息
+  blocklist: []             # 拉黑关键词，命中的消息不翻译
+
+hotkey:
+  send_box: "alt+t"         # 呼出中文输入小窗
+  send_clipboard: "alt+y"   # 把剪贴板内容翻译后送出
+  toggle_receive: "alt+g"   # 暂停/恢复接收翻译
+  retranslate_last: "alt+r" # 重译最近一条
+
+source:
+  kind: ocr                 # console=控制台日志（最准）/ ocr=屏幕识别（保底）
+  fallback_to_ocr: true     # console 不可用时自动换 ocr
+  # 只在游戏窗口前台时抓屏识别。务必保持 true：
+  # 切到桌面/浏览器/本工具窗口时那块区域是别的内容，不挡住就会把文件名、
+  # 命令行当成聊天翻译（实测踩过这个坑）。
+  require_game_focus: true
+
+console:
+  game_dir: ""              # 留空=自动探测 Steam 下的 Deadlock
+  log_path: ""              # 留空=自动探测 console.log
+  extra_candidates: []
+  poll_interval_ms: 120
+  tail_from_end: true
+
+ocr:
+  backend: rapidocr         # rapidocr / windows
+  # 归一化 [左, 上, 右, 下]，按屏幕宽高比例（换分辨率不用改）。
+  # 实测真实对局（1920x1080）的顶部条布局：
+  #   y 0.000~0.086  12 个英雄头像
+  #   y 0.086~0.107  等级数字（11/9.2/…，必须跳过，否则会被当聊天）
+  #   y 0.19 ~0.30   聊天气泡（最新在上，每人最多 3 条，10 秒淡出）
+  # 所以默认框"头像下方 → 气泡堆叠底"这一带。聊天气泡一定落在这条带子里。
+  region: [0.0, 0.10, 1.0, 0.33]
+  region_calibrated: false  # 你点过「框选聊天区域」后会自动变 true
+  interval_ms: 700          # 抓帧间隔
+  change_threshold: 0.010   # 低于此变化量不跑 OCR（省 CPU）——没人说话时几乎零开销
+  min_confidence: 0.55
+  # ⚠️ 这两个是性能开关，别乱改：聊天条是 1920x248 这种"又宽又扁"的形状，
+  # 默认的 min/736 会把短边放大到 736（检测输入上千万像素），实测单帧 4~7 秒。
+  # 改成 max/960 后同一区域 1145ms（快约 5 倍）。
+  det_limit_side: 960
+  det_limit_type: max
+  # detect=true 整块检测+识别（默认，聊天条用这个）
+  # detect=false 按 rows 切条只做识别（行高必须完全对得上，只适合单行场景）
+  detect: true
+  rows: 6
+  filter_hud: true          # 过滤 HUD 数字/界面词，避免把 "45"、"FPS:221" 翻出来
+  upscale: 2                # 放大倍数（小字识别率关键）
+  invert: false
+  max_lines: 8
+
+translate:
+  # 默认来源 = DeepSeek 云端官方端点（模型 deepseek-flash）。
+  # 想改回本机 Ollama（不出网）：把下面三行换成注释里那组。
+  base_url: "https://api.deepseek.com/v1"
+  # 默认**留空** = "还没配密钥"。这样游戏里按 F8 填过一次的密钥（存在
+  # %APPDATA%\deadlock-tongyi\settings.json）就是唯一来源，不会被这里压住。
+  # 想用环境变量，就写成 " ${DEEPSEEK_API_KEY} " 去掉引号里的空格；注意：设了这个
+  # 占位符而环境变量又没设时，它会**盖掉**你在游戏里填的密钥 —— 二选一，别同时用。
+  api_key: ""
+  model: "deepseek-flash"      # 官方现役 ID：deepseek-flash（便宜，默认）/ deepseek-v4-pro（更强更贵）
+  # 本机 Ollama 的写法（切换来源也可以在游戏内 F8 面板里做，不必改这里）：
+  #   base_url: "http://localhost:11434/v1"
+  #   api_key: "none"
+  #   model: "hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M"
+  # DeepSeek 的思考模式默认是开的（effort=high）：短句会先产出一大段思维链，
+  # 直接撞 timeout_s；而且思考模式下 temperature 被忽略、top_p 被抬到 >=0.95。
+  # 游戏聊天翻译不需要思考，所以默认关。只对 DeepSeek 端点发这个字段。
+  thinking: "off"           # off=关（推荐）/ auto=不发这个字段
+  temperature: 0.0          # 短句必须 0，否则模型爱加解释
+  top_p: 0.9
+  max_tokens: 256
+  timeout_s: 12.0
+  max_retries: 2
+  context_window: 0         # 最近 N 轮上下文（短句消歧最有效）；云端单轮模型请设 0
+  glossary: true
+  max_glossary_terms: 12
+  exact_match: true         # 命中聊天轮盘整句时直接返回，不调用模型
+  min_request_interval_s: 0.0
+  system_extra: ""
+  # API Key 也可以在浏览器里配一次就永久生效：http://localhost:8791/settings
+
+display:
+  overlay: true
+  anchor: chat              # chat=贴左下聊天区 / bottom=底部居中 / custom
+  custom_pos: [40, 640]
+  font_family: "Microsoft YaHei"
+  font_size: 15
+  opacity: 0.88
+  max_lines: 5
+  mode: replace             # replace=只显示中文 / both=英文+中文
+  hide_after_s: 25.0
+
+input:
+  # 交付方式：
+  #   clipboard = 零注入（默认，推荐）：英文只进剪贴板 + 悬浮窗，你自己 Ctrl+A/Ctrl+V
+  #   inject    = 允许工具模拟按键自动注入（默认关，有反作弊风险面）
+  handoff: clipboard
+
+  # ---- 零注入路径的触发方式 ----
+  trigger: space_taps        # space_taps=聊天框里连按 N 次空格 / hotkey=只用热键
+  tap_key: space
+  taps: 3                    # 连按几次触发
+  tap_window_s: 1.5          # 几次之间允许的最大间隔
+  require_game_focus: true   # 只在游戏窗口前台时响应（聊天框没开时连按空格=跳跃，不会误触发）
+  # 聊天输入行的归一化区域 [左,上,右,下]。聊天框打开时才显示 "To (ALL): 你打的字"
+  input_region: [0.28, 0.30, 0.74, 0.37]
+  show_original: true        # 悬浮窗同时显示中文原文，方便核对 OCR
+
+  # ---- 下面这些只在 handoff=inject 时生效 ----
+  level: L2                  # L1=注入并发送 / L2=注入不发送 / L3=只复制
+  auto_send: false
+  keep_clipboard: true
+  key_delay_ms: 35
+  open_chat_key: enter
+  clear_first: true
+  max_chars: 200
+  send_prefix: ""
+
+ui:
+  theme: dark
+  start_minimized: false
+  log_level: INFO

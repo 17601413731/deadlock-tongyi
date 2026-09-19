@@ -1,0 +1,2897 @@
+// dlchat.js — 通译（Tongyi）：Deadlock 聊天实时翻译（游戏内 Panorama 运行时）
+// ===========================================================================
+// 这个文件同时被两个布局加载：
+//   · panorama/layout/chat.xml                    -> 聊天输入框 + 展开的聊天列表
+//   · panorama/layout/citadel_hud_top_bar_chat.xml -> 对局中头顶的聊天气泡
+// 每个布局各自实例化一份脚本上下文，脚本按"当前上下文里有什么"自适应干活：
+//   有 #ChatInput     -> 中文转英文（打中文，连按两下空格，输入框自动变成中英对照）
+//   有 #Messages      -> 头顶气泡：英文进，中文出
+//   有 #ChatMessages  -> 展开列表：英文进，中文出
+//
+// 与本地 Python 桥（默认 localhost:8791）的通信
+// ---------------------------------------------------------------------------
+// Deadlock 移除了 $.AsyncWebRequest（函数还在，但一调用就同步抛
+// "AsyncWebRequest has been removed"），运行时 $.CreatePanel("HTML") 也拿不到可用的
+// HTML 面板。唯一可行通道：在布局里用 <HTML> 标签声明一个隐藏面板 -> SetURL 打开桥
+// 的 /bridge 页面 -> 页面 fetch 桥 API -> 把结果写进 document.title -> 这里轮询
+// panel.title。两个硬约束记下来免得再踩：
+//   1) 必须用 localhost，不能用 127.0.0.1（HTML 面板对回环 IP 有拦截）
+//   2) 通道同一时刻只能有一个在途请求（title 是单槽），所以传输层是串行队列
+// ===========================================================================
+
+(function () {
+	"use strict";
+
+	// ---------------------------------------------------------------- 配置
+	var BRIDGE_HOST = "localhost";     // 不用 127.0.0.1：见文件头注释
+	var BRIDGE_PORT = 8791;
+	var BRIDGE_BASE = "http://" + BRIDGE_HOST + ":" + BRIDGE_PORT;
+	var TITLE_PREFIX = "LCT";          // 与桥页面约定：title = LCT<id><json>
+	var MOD_TAG = "tongyi-mod/1.0.0";
+
+	var TITLE_POLL_SECONDS = 0.15;     // title 轮询间隔
+	var REQUEST_TIMEOUT = 30;          // 单请求超时（秒）
+	var FIRST_TIMEOUT = 30;            // 首次请求：网页引擎初始化可能很慢，给足时间
+	var HEALTH_INTERVAL = 15;          // 桥健康探测间隔（别太勤，通道是单槽的）
+	var ROW_SCAN_SECONDS = 0.25;       // 聊天行扫描间隔
+	var INPUT_SCAN_SECONDS = 0.1;      // 输入框扫描间隔
+	var STATUS_HOLD_SECONDS = 5;       // 状态提示停留（秒）
+	var SENT_MEMORY_SECONDS = 45;      // 记住自己刚发出去的英文，别把它又翻回中文
+	// 模型列表最多预留几行面板。Panorama 的 DeleteAsync 不生效，列表变短时只能把
+	// 多出来的旧行挡住，所以需要一个固定的行数上限（本地 Ollama 一般也就几个模型）。
+	var MAX_MODEL_ROWS = 12;
+	// 同一行翻译失败后最多自动重试几次（桥不通时避免同一句反复占队列）
+	var MAX_ROW_RETRY = 2;
+	// 首次扫到一个聊天容器时，只处理最后几条：历史消息没必要一次翻一大堆
+	// （串行队列，一次翻 10 条 = 十几秒的等待）
+	var BOOTSTRAP_TAIL = 3;
+
+	var TRIGGER = "   ";               // 触发转换：连按三下空格
+	var CJK_RE = /[\u3400-\u9fbf\uf900-\ufaff\uff00-\uffef]/;
+	var ASCII_LETTER_RE = /[A-Za-z]/;
+	var DEBUG = true;                  // 诊断日志推给桥（scripts/mod_log.py 可看）
+
+	// ---------------------------------------------------------------- 小工具
+	var tickCount = 0;
+
+	function nowSeconds() {
+		try { return Date.now() / 1000; } catch (e) { return tickCount * 0.1; }
+	}
+
+	// compact 设置响应用的是**短键**：那个包要经 HTML 文档标题传回游戏，长度是硬约束
+	// （实测本地长模型名已经占到 378/380 字符）。桥那边为了给用户自己的模型名腾地方，
+	// 把字段名压成了一个词：recv/send/disp/out/hover/trig/keep/gloss/prv。
+	// 这里集中翻译一次，别在业务代码里到处出现 c.recv 这种天书。
+	function compact(res) {
+		res = res || {};
+		return {
+			recv: res.recv, send: res.send, disp: res.disp, out: res.out,
+			hover: res.hover, trig: res.trig, keep: res.keep, gloss: res.gloss,
+			prv: res.prv, sep: res.sep, model: res.model,
+			// 下面这些在响应被裁剪时会缺席，读的时候一律带默认值
+			persisted: res.persisted, req: res.req, hit: res.hit,
+			latIn: res.latIn, latOut: res.latOut, vram: res.vram,
+			loaded: res.loaded, keySet: res.keySet, trimmed: res.trimmed
+		};
+	}
+
+	// Panorama 没有 setInterval，只能自己用 $.Schedule 串起来
+	function every(seconds, fn) {
+		function tick() {
+			tickCount += 1;
+			try { fn(); } catch (e) { /* 面板被销毁等异常不该打断循环 */ }
+			try { $.Schedule(seconds, tick); } catch (e) { /* 上下文没了就算了 */ }
+		}
+		try { $.Schedule(seconds, tick); } catch (e) {}
+	}
+
+	function isValid(p) {
+		try { return !!p && (!p.IsValid || p.IsValid()); } catch (e) { return false; }
+	}
+
+	function childrenOf(p) {
+		var out = [];
+		if (!isValid(p)) return out;
+		// 优先用引擎的 GetChildCount/GetChild：这是 Panorama 的正规接口。
+		// `p.Children` 是老写法，新版本不一定给（给不到就永远扫不到任何聊天行 ——
+		// 那种失败是静默的：不报错、也没请求）。
+		try {
+			if (typeof p.GetChildCount === "function" && typeof p.GetChild === "function") {
+				var n = p.GetChildCount() || 0;
+				for (var i = 0; i < n; i++) {
+					var kid = p.GetChild(i);
+					if (kid) out.push(kid);
+				}
+				if (out.length) return out;
+			}
+		} catch (e) {}
+		try {
+			var kids = p.Children || [];
+			for (var j = 0; j < kids.length; j++) out.push(kids[j]);
+		} catch (e) {}
+		return out;
+	}
+
+	function hasClass(p, name) {
+		if (!isValid(p)) return false;
+		try { if (typeof p.HasClass === "function") return !!p.HasClass(name); } catch (e) {}
+		try { if (typeof p.BHasClass === "function") return !!p.BHasClass(name); } catch (e) {}
+		return false;
+	}
+
+	function setClass(p, name, on) {
+		if (!isValid(p)) return;
+		try {
+			if (on && typeof p.AddClass === "function") { p.AddClass(name); return; }
+			if (!on && typeof p.RemoveClass === "function") { p.RemoveClass(name); return; }
+			if (typeof p.SetHasClass === "function") p.SetHasClass(name, !!on);
+		} catch (e) {}
+	}
+
+	function enc(s) {
+		try { return encodeURIComponent(s); } catch (e) { return escape(s); }
+	}
+
+	// 调一个"无参、可能不存在"的面板方法（ScrollToBottom / GetFirstChild 这类）。
+	// Panorama 的新旧版本方法集不一样：typeof 判断 + try 兜底，缺了就当没这回事，
+	// 绝不让一个缺失的可选 API 把整条翻译链路带崩。
+	function call0(obj, name) {
+		if (!isValid(obj)) return null;
+		try {
+			if (typeof obj[name] !== "function") return null;
+			return obj[name]();
+		} catch (e) { return null; }
+	}
+
+	// 按 id 找一个**直接子节点**（游戏给聊天行填内容时正文那格是 #MessageContents 的直接子节点；
+	// 但 TestEntry 之类会再嵌一层，所以不能只看它）。
+	function childById(parent, id) {
+		if (!isValid(parent)) return null;
+		var kids = childrenOf(parent);
+		for (var i = 0; i < kids.length; i++) {
+			var kid = "";
+			try { kid = kids[i].id || ""; } catch (e) {}
+			if (kid === id) return kids[i];
+		}
+		return null;
+	}
+
+	// 深度优先找第一个满足条件的面板
+	function findDeep(p, pred, depth) {
+		if (!isValid(p) || (depth || 0) > 8) return null;
+		var kids = childrenOf(p);
+		for (var i = 0; i < kids.length; i++) {
+			var kid = kids[i];
+			var t = null;
+			try { t = kid.type; } catch (e) {}
+			if (pred(kid, t)) return kid;
+			var deeper = findDeep(kid, pred, (depth || 0) + 1);
+			if (deeper) return deeper;
+		}
+		return null;
+	}
+
+	function findByClass(p, cls) {
+		return findDeep(p, function (kid) { return hasClass(kid, cls); });
+	}
+
+	// 找一个子面板：先按 id（FindChildTraverse 是深度查找），找不到就找同名的类。
+	function findChild(root, idOrClass, byClass) {
+		if (!isValid(root)) return null;
+		if (byClass) return findByClass(root, idOrClass);
+		var found = null;
+		try { found = root.FindChildTraverse(idOrClass); } catch (e) {}
+		return isValid(found) ? found : null;
+	}
+
+	// 把一棵子树里所有文字收起来拼成一行。
+	// 为什么不"找第一个有字的 Label"：游戏**没给聊天正文那个 Label 起 id**
+	// （原版 snippet `ChatMessageContents_Text` 里就是裸的 `<Label text="{s:message_text}" />`），
+	// 而一行里第一个有字的往往是发送者名字 —— 猜错的后果是"把玩家名当消息翻"。
+	// 从 MessageContents 整棵子树收集，就不用猜了。
+	//
+	// ⚠ 例外：双语行内模式下，正文那一格里躺着**我们自己写进去的** "英文 | 中文"。
+	// 直接收就会把中文当成下一条消息的原文（游戏回收行面板时尤其明显：新英文会被
+	// 拼在旧中文后面）。所以先用 readRowText 把"我们写过的那一格"还原成原文。
+	// 收到"装着我们那一格的容器"时**立刻停止往下走**：那一格是整份正文，子格子不必再数一遍，
+	// 往上的祖先也不会各自再喊一遍。
+	function collectText(panel) {
+		var out = [];
+		(function walk(p, depth) {
+			if (!isValid(p) || depth > 6) return;
+			var t = readRowText(p).replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+			if (t) out.push(t);
+			if (inlineCellInside(p)) return;
+			var kids = childrenOf(p);
+			for (var i = 0; i < kids.length; i++) walk(kids[i], depth + 1);
+		})(panel, 0);
+		return out.join(" ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+	}
+
+	// 面板的 class 列表（游戏 CSS 是按 class 匹配的，看到 class 基本就知道排版规则）。
+	// Panorama 没有"取全部 class"的接口，只能拿已知的几个逐个问。
+	// **id 也要算进去**：有些关键节点（MessageContents / MessageSource / MessageText）
+	// 游戏是靠 id 定位的，光看 class 会以为"这个容器什么都没有"。
+	function panelClasses(p) {
+		if (!isValid(p)) return "";
+		var known = ["ChatMessage", "Expired", "MessageBody", "MessageSource", "MessageContents",
+			"Text", "Ping", "ChatBubble", "TextContainer", "bubble_bg", "ChatLinesWrapper",
+			"ChatLineContainer", "ChatLine", "ChatPersona", "SenderName", "ChannelName",
+			"SenderLocalClient", "IsSelf", "DLChatTranslation", "DLChatOriginal",
+			"DLChatBilingual", "DLChatTranslatedText", "DLChatChatInline"];
+		var hit = [];
+		try { if (p.id) hit.push("#" + p.id); } catch (e) {}
+		for (var i = 0; i < known.length; i++) {
+			if (hasClass(p, known[i])) hit.push(known[i]);
+		}
+		return hit.join(".");
+	}
+
+	// 结构探针：把"译文挂到了哪儿、那一带长什么样"推给桥（`python scripts\mod_log.py` 能读）。
+	// 只在真的插入译文时记一次（不是轮询），不会把串行通道灌满。
+	// 用途：像"译文和原文叠在一起"这种现象，光看画面分不清是"容器是横向流"还是
+	// "行高固定、不随内容长高" —— 这份 dump 一次就能分清，不用反复进游戏试。
+	function logRowStructure(tag, host, rec) {
+		try {
+			var chain = [];
+			var p = host;
+			for (var i = 0; i < 3 && isValid(p); i++) {
+				var id = "";
+				try { id = p.id || ""; } catch (e) {}
+				chain.push("{" + (id ? "#" + id : "") + panelClasses(p)
+					+ " kids=" + childrenOf(p).length + "}");
+				try { p = p.GetParent(); } catch (e) { break; }
+			}
+			// 尺寸和底色：这三个数是"看不见"类问题的判决书。
+			//   lblH = 0  -> 标签压根没被量出高度（布局/宿主问题）
+			//   lblH > 0 但画面没有 -> 颜色/底色问题
+			//   hostH = 0 -> 宿主本身没尺寸，得换挂载点
+			var box = function (x) {
+				if (!isValid(x)) return -1;
+				var w = -1, h = -1;
+				try { w = (typeof x.GetWidth === "function") ? Math.round(x.GetWidth()) : -1; } catch (e) {}
+				try { h = (typeof x.GetHeight === "function") ? Math.round(x.GetHeight()) : -1; } catch (e) {}
+				return w + "x" + h;
+			};
+			var bg = "";
+			try { bg = (rec && rec.trans && rec.trans.style) ? rec.trans.style.backgroundColor : ""; } catch (e) {}
+			var vis = "?";
+			try { vis = host.IsVisible(); } catch (e) {}
+			log("struct:" + tag, {
+				text: String((rec && rec.original) || "").substring(0, 24),
+				host: chain.join(" < "),
+				vis: vis,
+				lbl: box(rec && rec.trans),
+				hostBox: box(host),
+				bg: bg
+			});
+		} catch (e) {}
+	}
+
+	function isLabel(p) {
+		if (!isValid(p)) return false;
+		try { if (p.type === "Label") return true; } catch (e) {}
+		return false;
+	}
+
+	function readText(p) {
+		if (!isValid(p)) return "";
+		try { return String(p.text == null ? "" : p.text); } catch (e) { return ""; }
+	}
+
+	function writeText(p, value) {
+		if (!isValid(p)) return false;
+		try { p.text = String(value); return true; } catch (e) { return false; }
+	}
+
+	// ---- 双语行内模式：让"读过的话"还能读回原文 --------------------------------
+	// 聊天窗双语是把中文拼进**游戏自己那格正文**里的（"英文 | 中文"），于是有个副作用：
+	// collectText 会把这整串当成消息原文。两个后果，都很难看：
+	//   ① 下一条消息的原文里混进上一条的中文（游戏回收行面板时最明显）；
+	//   ② 重译时把中文一起送去翻译。
+	// 所以写进去的那一刻把"这一格 = 哪个原文"记下来，读的时候再还原。
+	// 只认带 DLChatChatInline 的行 —— 游戏换新消息、把这格整段改写时，我们记的那份
+	// 就不算数了（回落到读到的文字），不会把旧原文套到新消息头上。
+	var inlineRecs = [];
+
+	function inlineFind(panel) {
+		for (var i = 0; i < inlineRecs.length; i++) {
+			if (inlineRecs[i].panel === panel) return inlineRecs[i];
+		}
+		return null;
+	}
+
+	function inlineRemember(panel, data) {
+		var rec = inlineFind(panel);
+		if (!rec) { rec = { panel: panel }; inlineRecs.push(rec); }
+		rec.original = data.original;       // 那一格原本的文字
+		rec.finalText = data.finalText;     // 我们写进去的 "英文 | 中文"（用来判断有没有被游戏改写）
+		rec.cell = data.cell || null;       // 我们改写的**那一格**（身份比对；不能靠"有字的格子"列表，
+		                                    // 因为悬停原文那个标签也在同一个容器里、也带原文，会被当成正文）
+		rec.collected = data.collected;     // 这一格所属整行的正文（还原用）
+		while (inlineRecs.length > 48) inlineRecs.shift();   // 聊天行会回收，别无限长
+	}
+
+	// 清掉一格的记录。**绝不能顺手把正文写回旧原文** —— 这时候那一格通常已经是
+	// 游戏填进去的**新消息**了，写回去等于把新消息吃掉（离线测试台抓过这个 bug）。
+	function inlineForget(panel) {
+		for (var i = inlineRecs.length - 1; i >= 0; i--) {
+			if (inlineRecs[i].panel === panel) inlineRecs.splice(i, 1);
+		}
+	}
+
+	// 这一格是不是"我们写过的"：文字还跟当时写进去的一模一样才算（游戏改写后即作废）。
+	function inlineEntryFor(panel) {
+		if (!isValid(panel)) return null;
+		var rec = inlineFind(panel);
+		if (!rec || !rec.finalText) return null;
+		if (readText(panel) !== rec.finalText) return null;
+		return rec;
+	}
+
+	// 往上找一层"带 DLChatChatInline 的行"。行被游戏回收去显示别的话时，类会被摘掉，
+	// 这条也就自然失效了。
+	function inlineRowOf(panel) {
+		var p = panel;
+		for (var i = 0; i < 4 && isValid(p); i++) {
+			if (hasClass(p, "DLChatChatInline") && inlineFind(p)) return p;
+			try { p = p.GetParent(); } catch (e) { break; }
+		}
+		return null;
+	}
+
+	// 我们改写的那一格在不在这个容器里（用于"读到容器就用整行正文、并且不再往下走"）
+	function inlineCellInside(panel) {
+		var row = inlineRowOf(panel);
+		if (!row) return null;
+		var rec = inlineFind(row);
+		if (!rec || typeof rec.collected !== "string" || !isValid(rec.cell)) return null;
+		// 那一格必须还是"我们写的那份文字"：游戏把行回收去显示新消息时，格里的字被整段改写，
+		// 这时候整行正文就作废了 —— 不然会把**上一条消息的原文/译文**当成这一行的内容报出去
+		// （离线测试台抓到过：回收后探针仍然读到旧的那句 "go rosh"）。
+		if (!inlineEntryFor(rec.cell)) return null;
+		var p = rec.cell;
+		for (var i = 0; i < 6 && isValid(p); i++) {
+			if (p === panel) return rec;
+			try { p = p.GetParent(); } catch (e) { break; }
+		}
+		return null;
+	}
+
+	// 读一格文字：
+	//   · 我们改写的那一格 -> 还原成纯英文原文（中文不进"原文"）
+	//   · 这一格的某个外层容器（而且容器里确实装着那一格）-> 直接用记下的整行正文
+	//   · 其它 -> 原样读出
+	//
+	// ⚠ 两个坑都是离线测试台抓出来的：
+	//   ① "是不是那一格"必须**身份比对**（记下来的格子引用），不能拿"容器里有字的格子"去猜 ——
+	//      悬停原文那个标签也在同一个容器里、也带着原文，会被误当成正文；
+	//   ② 只有"路径上真的经过那一格"的容器才能用整行正文。行的类挂在行容器上，从格子往上走
+	//      每一层祖先都看得见它；不加 ② 的话，wrapper 和 #MessageContents 会各喊一遍正文，
+	//      拼出来就是 "原文 原文 原文"。
+	function readRowText(panel) {
+		// 悬停原文那个标签（.DLChatOriginal）是我们自己造的副本，**永远不算正文**。
+		// 不然行被游戏回收显示新消息时，它还留着上一条的原文，会被当成"这一行的文字"
+		// 拼进去（离线测试台抓到过："need urn go rosh"）。
+		if (hasClass(panel, "DLChatOriginal")) return "";
+		var own = inlineEntryFor(panel);
+		if (own && own.cell === panel && typeof own.original === "string") return own.original;
+		var rec = inlineCellInside(panel);
+		if (rec) return rec.collected;
+		return readText(panel);
+	}
+
+	function looksChinese(s) { return CJK_RE.test(s); }
+
+	function looksEnglish(s) { return !CJK_RE.test(s) && ASCII_LETTER_RE.test(s); }
+
+	// ---------------------------------------------------------------- 通道探测
+	// 两条通道，优先直连：
+	//
+	//   1) 直连 GET —— `$.AsyncWebRequest(url, {type:"GET", timeout})` 返回 Promise。
+	//      这是引擎自带的 HTTP API（游戏内置的 chat_translator 就用它），每个请求
+	//      彼此独立、没有导航竞争。**不能只用 typeof 判断**：函数在、但调用会同步抛
+	//      "AsyncWebRequest has been removed"，所以必须真调一次看返回值。
+	//   2) HTML 面板 —— 隐藏 <HTML> 面板 SetURL 打开桥的 /bridge 页面，页面 fetch 完
+	//      把结果写进 document.title，这边轮询 panel.title。这条通道**首次导航之后
+	//      可能不再触发 title 更新**（连续导航会失效），所以只当兜底，并且要盯着
+	//      "页面存活标记" lct-alive 判断它到底有没有在干活。
+	var channel = {
+		mode: null,          // null=未探测  "http"=直连  "panel"=HTML 面板
+		httpStyle: "",       // "promise"=新 API  "send"=旧 SendRequest API
+		probeError: "",
+		pageAlive: false,    // 面板通道：见过 lct-alive
+		panelDead: false,    // 面板通道：导航过但一直没反应
+		navCount: 0,         // 导航次数
+		titleKind: "-",      // title 读回来的类型：s=字符串 o=其它 n=空
+		srcAccepted: "-",    // SetURL 后能不能从 src 属性读回地址
+		pingLocal: null,     // /ping 探针：localhost 能否加载并读回标题
+		pingIp: null,        // /ping 探针：127.0.0.1 同上
+		panelOnScreen: null, // 面板是否真的渲染中（聊天框开着才算）
+		eventsRegistered: 0, // 成功注册了几个 HTML 面板事件
+		eventErrors: 0,      // 注册失败数
+		eventCount: 0,       // 收到过多少个面板事件（主通道是否活着）
+		lastEventName: "",   // 最后一个事件名
+		lastEventText: "",   // 最后一个事件带来的文本（前 400 字符）
+		hotkey: "?",         // F8 快捷键绑定结果：panel / namespace / none
+		hints: {             // 桥随响应带回来的渲染提示（跟随设置即时生效）
+			displayMode: "bilingual",
+			outgoingMode: "bilingual",
+			separator: " | ",
+			showOriginal: true,
+			receiveEnabled: true,
+			sendEnabled: true,
+			trigger: "double_space"
+		}
+	};
+
+	// 双语模式下中英之间拼什么。
+	// 优先用面板里选的（保存后立刻生效，不用等桥回话）；没读过设置就用桥下发的。
+	function separatorText() {
+		var local = ui.local && ui.local.separator;
+		if (local && ui.SEP_TEXT[local]) return ui.SEP_TEXT[local];
+		var s = channel.hints.separator;
+		return (typeof s === "string" && s) ? s : " | ";
+	}
+
+	// 译文显示方式。**和 separatorText 同样的优先级**：游戏内设置面板上选的先算数，
+	// 免得"刚在面板里切了显示方式、译文却还是老样子"（要等桥下一轮响应才生效）。
+	function displayMode() {
+		var local = ui.local && ui.local.display_mode;
+		if (local) return local;
+		return channel.hints.displayMode || "bilingual";
+	}
+
+	// 运行时能力报告：探测结果都塞进这一行，方便一眼定位
+	var apiProbe = {
+		arity: -1,       // $.AsyncWebRequest.length（形参个数，能提示签名）
+		retType: "-",    // 返回值类型：undef/null/object/function...
+		keys: "-",       // 返回值自己的键（如果是对象）
+		cbShape: "",     // 哪种调用形态的回调真的被触发了
+		cbBody: ""       // 触发时拿到的内容（前 40 字符）
+	};
+
+	// 穷举调用形态：函数存在但返回既不是 Promise 也没有 SendRequest 时，
+	// 很可能签名变了（比如 (url, callback) 或 options 里带 success）。这里每种形态
+	// 都挂一个回调，谁真的被触发就说明签名是哪一种 —— 触发成功就等于拿到了可用通道。
+	function probeApiShapes(url, done) {
+		try { apiProbe.arity = $.AsyncWebRequest.length; } catch (e) {}
+		var shapes = [
+			{ key: "cb2", call: function (cb) { return $.AsyncWebRequest(url, cb); } },
+			{ key: "optcb", call: function (cb) {
+				return $.AsyncWebRequest(url, { type: "GET", timeout: 3000 }, cb); } },
+			{ key: "inner", call: function (cb) {
+				return $.AsyncWebRequest(url, { type: "GET", timeout: 3000,
+					success: cb, onload: cb, callback: cb }); } },
+			{ key: "obj", call: function (cb) {
+				return $.AsyncWebRequest({ url: url, type: "GET", timeout: 3000 }, cb); } }
+		];
+		var idx = 0;
+		function next() {
+			if (idx >= shapes.length) { done(); return; }
+			var shape = shapes[idx++];
+			var settled = false;
+			function finish(ok, body) {
+				if (settled) return;
+				settled = true;
+				if (ok && !apiProbe.cbShape) {
+					apiProbe.cbShape = shape.key;
+					apiProbe.cbBody = String(body || "").substring(0, 40);
+					done();
+					return;
+				}
+				next();
+			}
+			var ret;
+			try {
+				ret = shape.call(function (a, b) {
+					// 回调实参形态未知：谁看起来像 JSON 就用谁
+					var cand = (typeof a === "string") ? a : (typeof b === "string" ? b : "");
+					var good = false;
+					try { JSON.parse(cand); good = true; } catch (e) { good = false; }
+					finish(good, cand);
+				});
+			} catch (e) {
+				next();
+				return;
+			}
+			if (apiProbe.retType === "-") {
+				apiProbe.retType = (ret === undefined) ? "undef"
+					: (ret === null ? "null" : typeof ret);
+				if (ret && typeof ret === "object") {
+					var ks = [];
+					try {
+						for (var k in ret) { ks.push(k); if (ks.length >= 4) break; }
+					} catch (e) {}
+					apiProbe.keys = ks.length ? ks.join(",") : "(none)";
+				}
+			}
+			try { $.Schedule(2.0, function () { finish(false, ""); }); }
+			catch (e) { finish(false, ""); }
+		}
+		next();
+	}
+
+	// 一行诊断码，直接显示在状态行里。格式：
+	//   P:<探测> A:<形参个数> R:<返回类型> K:<返回对象键> C:<可用回调形态>
+	//   S:<SetURL> T:<title 类型> A:<存活标记> N:<导航次数> R:<src 回读> G:<ping>
+	// HTML 面板事件的读回通道
+	// ---------------------------------------------------------------------------
+	// 这是**主通道**：隐藏面板导航后，引擎会抛出 HTML 面板相关事件，标题就在事件参数里。
+	// 只轮询 panel.title 是不够的 —— 实测这个版本里 panel.title 一直是空的（诊断码 T:n），
+	// 于是页面明明加载成功了我们也读不到，表现成"面板未加载"。事件名是引擎接口事实，
+	// 逐个注册、谁先带来我们要的字符串就用谁。
+	var PANEL_EVENTS = [
+		"HTMLContentLoaded", "HTMLLoadPage", "HTMLStartRequest", "HTMLFinishRequest",
+		"HTMLURLChanged", "HTMLChangedTitle", "HTMLTitle"
+	];
+
+	// 事件参数形态未知：字符串直接用，对象则挨个试常见字段，再退到属性读取
+	function eventText(arg) {
+		if (arg == null) return "";
+		try { if (typeof arg === "string") return arg; } catch (e) {}
+		var keys = ["title", "url", "src", "text"];
+		for (var i = 0; i < keys.length; i++) {
+			try {
+				var v = arg[keys[i]];
+				if (typeof v === "string" && v) return v;
+			} catch (e) {}
+		}
+		try {
+			if (typeof arg.GetAttributeString === "function") {
+				return String(arg.GetAttributeString("title", "")
+					|| arg.GetAttributeString("url", "")
+					|| arg.GetAttributeString("src", "") || "");
+			}
+		} catch (e) {}
+		return "";
+	}
+
+	function registerPanelEvents() {
+		channel.eventsRegistered = 0;
+		for (var i = 0; i < PANEL_EVENTS.length; i++) {
+			(function (name) {
+				try {
+					$.RegisterForUnhandledEvent(name, function () {
+						var parts = [];
+						for (var a = 0; a < arguments.length; a++) {
+							var t = eventText(arguments[a]);
+							if (t) parts.push(t);
+						}
+						if (!parts.length) return;
+						channel.eventCount += 1;
+						channel.lastEventName = name;
+						channel.lastEventText = parts.join(" ").substring(0, 400);
+						bus.onPanelText(channel.lastEventText);
+					});
+					channel.eventsRegistered += 1;
+				} catch (e) {
+					channel.eventErrors += 1;
+				}
+			})(PANEL_EVENTS[i]);
+		}
+	}
+
+	// ---------------------------------------------------------------- 设置面板
+	// 交互全部本地完成：打开时读一次、保存时写一次，中间不逐键走网络。
+	// 布局里的 onactivate="DLChatXxx()" 需要全局函数，所以最后用 globalThis 导出。
+	var ui = {
+		open: false,
+		dirty: false,
+		local: null,            // 本地编辑中的设置
+		models: [],
+		modelBtns: [],      // [{name, btn}] 模型下拉项（只建一次，绝不重建）
+		listOpen: false,    // 模型下拉是否展开
+		remote: null,           // 上一次从桥读回来的完整视图
+		keySet: true,           // 云端来源的密钥是否配好（没配就在面板上点出来）
+
+		// 翻译来源：单字母码由桥定义（l=本地 Ollama / d=DeepSeek 云端 / o=其他兼容端点）。
+		// 用一个字是因为 compact 响应要经 HTML 文档标题传回游戏，长度是硬约束。
+		PROVIDER: {
+			byCode: { l: "local", d: "deepseek", o: "openai" },
+			byName: { local: "l", deepseek: "d", openai: "o" },
+			order: ["local", "deepseek"],
+			label: { local: "本地 Ollama", deepseek: "DeepSeek 云端", openai: "其他端点" },
+			short: { local: "本地", deepseek: "DeepSeek", openai: "其他" }
+		},
+
+		CYCLE: {
+			display_mode: ["replace", "bilingual"],
+			// 发出去的消息：只发英文 / 中英都发
+			outgoing_mode: ["english_only", "bilingual"],
+			// 双语模式下中英之间拼什么。三种都给出来，因为"竖线在游戏字体里
+			// 渲染成什么样"只能进游戏才看得出来 —— 一眼不对就换下一个。
+			separator: ["pipe", "full", "space"],
+			// Ctrl+Enter 需要 TextEntry 的键盘事件，这条通道还没验证过，
+			// 先只暴露两种空格触发 —— 不给用户摆一个按了没反应的选项。
+			trigger: ["triple_space", "double_space"],
+			keep_alive: ["5m", "30m", "60m", "-1"],
+			// 只放已验证能用的两条：本地 Ollama / DeepSeek 云端
+			provider: ["local", "deepseek"]
+		},
+		LABEL: {
+			// 聊天窗的「双语」= 中文拼在正文里（英文 | 中文），不是另起一行 —— 文案跟着改，
+			// 免得设置面板上写的东西和游戏里看到的不一样。
+			display_mode: { replace: "只显示中文", bilingual: "英文 | 中文" },
+			outgoing_mode: { english_only: "只发英文", bilingual: "中英都发" },
+			// 标签直接显示拼出来的效果，一眼能看出选的是哪种
+			separator: { pipe: "中文 | 英文", full: "中文 ｜ 英文",
+				space: "中文  英文" },
+			trigger: { triple_space: "三下空格", double_space: "两下空格",
+				ctrl_enter: "Ctrl+Enter" },
+			keep_alive: { "5m": "5 分钟", "30m": "30 分钟", "60m": "60 分钟",
+				"-1": "常驻不卸载" }
+		},
+
+		// 选项名 -> 真正拼进输入框的字符串（和桥的 SEPARATOR_TEXT 对齐）
+		SEP_TEXT: { pipe: " | ", full: " ｜ ", space: "  " },
+		// 桥传回来的是单字母码（p/f/s），这里转回选项名
+		SEP_NAME: { p: "pipe", f: "full", s: "space" },
+
+		// 当前面板上选中的来源。读设置还没回来时用**默认来源**（= DeepSeek 云端，
+		// 和 config.yaml / settings.py 里的默认值保持一致）：以前这里写死 "local"，
+		// 面板刚打开、响应还没到的那一瞬间会显示"本地 Ollama"，和实际默认不符。
+		providerName: function () {
+			return (this.local && this.local.provider) || "deepseek";
+		},
+
+		isCloud: function () {
+			return this.providerName() !== "local";
+		},
+
+		el: function (id) {
+			var root = null;
+			try { root = $.GetContextPanel(); } catch (e) { return null; }
+			var found = null;
+			try { found = root.FindChildTraverse(id); } catch (e) {}
+			return isValid(found) ? found : null;
+		},
+
+		setText: function (id, text) {
+			var el = this.el(id);
+			if (el) writeText(el, text);
+		},
+
+		// 取模型列表（单独一次请求，避免把设置响应撑大）。
+		// force=true 用于切换来源：列表是按来源拿的，不强制重取就会一直显示上一个
+		// 来源的模型名 —— 云端来源配着本地模型名，选了必然报错。
+		loadModels: function (then, force) {
+			var self = this;
+			if (this.models.length && !force && then) { then(); return; }
+			this.status("读取模型列表…");
+			// 发**全名**（"local"/"deepseek"）：桥两种写法都认，但全名在日志里能看懂
+			bus.send("models", { provider: this.providerName() }, REQUEST_TIMEOUT,
+				function (res) {
+				if (res && res.ok) {
+					self.models = res.models || [];
+					self.buildModelList();          // 只建一次，之后只切高亮
+					if (!self.models.length) {
+						self.status(self.isCloud()
+							? "这个来源没有可选模型"
+							: "没读到本机模型（Ollama 在跑吗？装了模型吗？）");
+					} else {
+						self.status("共 " + self.models.length + " 个模型，点一项切换");
+					}
+				} else {
+					self.status("读取模型列表失败：" + shortError(res && res.error));
+				}
+				if (then) then();
+			});
+		},
+
+		// 把本地状态刷到界面（纯本地，立即生效，不等待网络）
+		render: function () {
+			var s = this.local;
+			if (!s) return;
+			this.setText("DLChatSet_receive_l", s.receive_enabled ? "开" : "关");
+			this.setText("DLChatSet_send_l", s.send_enabled ? "开" : "关");
+			this.setText("DLChatSet_hover_l", s.show_original_on_hover ? "开" : "关");
+			this.setText("DLChatSet_glossary_l", s.glossary ? "开" : "关");
+			this.setText("DLChatSet_display_l",
+				(this.LABEL.display_mode[s.display_mode] || s.display_mode));
+			this.setText("DLChatSet_outgoing_l",
+				(this.LABEL.outgoing_mode[s.outgoing_mode] || s.outgoing_mode));
+			this.setText("DLChatSet_trigger_l",
+				(this.LABEL.trigger[s.trigger] || s.trigger));
+			this.setText("DLChatSet_sep_l",
+				(this.LABEL.separator[s.separator] || s.separator));
+			this.setText("DLChatSet_keep_l",
+				(this.LABEL.keep_alive[s.keep_alive] || s.keep_alive));
+			var pname = this.providerName();
+			this.setText("DLChatSet_provider_l",
+				(this.PROVIDER.label[pname] || pname));
+			// 云端来源里"模型常驻"没有意义（那是 Ollama 的 keep_alive），收起来，
+			// 免得摆一个点了没反应的开关。
+			var keepRow = this.el("DLChatSetRow6");
+			if (keepRow) setClass(keepRow, "DLChatRowHidden", this.isCloud());
+			// "双语分隔符"只在双语模式下才有意义，单语模式收起来
+			var sepRow = this.el("DLChatSetRowSep");
+			if (sepRow) {
+				setClass(sepRow, "DLChatRowHidden", s.outgoing_mode !== "bilingual");
+			}
+			this.setText("DLChatSetModelLabel", s.model + "  v");
+			this.renderFailure();
+			this.highlightModel();
+		},
+
+		// "最近错误"那一行：一直留着，直到下一次翻译成功才清掉。
+		// 状态行那句提示几秒就没了，打团时根本看不到，得有个地方能事后回看。
+		renderFailure: function () {
+			var row = this.el("DLChatSetFailRow");
+			var label = this.el("DLChatSetFail");
+			var has = !!lastFailure.text;
+			if (row) setClass(row, "DLChatRowHidden", !has);
+			// 清空时也要写一遍：只隐藏不擦字的话，标签里还留着上一轮的错，
+			// 下次再显示出来就是旧消息（"保存后又看不到"那类困惑就是这么来的）。
+			if (label) writeText(label, has ? lastFailure.text : "");
+		},
+
+		// 只切高亮，绝不重建面板：早先版本每次点击都重建模型列表，而 DeleteAsync
+		// 在这个环境里没生效，于是每点一下开关就多出一行模型名（用户实测到的现象）。
+		highlightModel: function () {
+			var list = this.modelBtns || [];        // 防御：字段缺失时不要抛异常
+			for (var i = 0; i < list.length; i++) {
+				var item = list[i];
+				if (!isValid(item.btn)) continue;
+				setClass(item.btn, "DLChatModelOn", item.name === this.local.model);
+			}
+		},
+
+		// 模型列表只在拿到列表后建一次
+		buildModelList: function () {
+			var host = this.el("DLChatSetModelList");
+			if (!host) return;
+			this.modelBtns = [];
+			var keep = this.models.length;
+			// 同一个 id 的 CreatePanel 会复用已有面板，且 DeleteAsync 在 Panorama 里
+			// 不生效（实测）—— 所以列表变短时不能靠"删"，要把多出来的旧项挡住，
+			// 否则切一次来源就多留几行上一个来源的模型名。
+			for (var j = 0; j < MAX_MODEL_ROWS; j++) {
+				var stale = null;
+				try { stale = host.FindChildTraverse("DLChatModel_" + j); } catch (e) {}
+				if (isValid(stale)) setClass(stale, "DLChatRowHidden", j >= keep);
+			}
+			for (var i = 0; i < this.models.length; i++) {
+				(function (name, self, index) {
+					try {
+						var btn = $.CreatePanel("Button", host, "DLChatModel_" + index);
+						if (!btn) return;
+						setClass(btn, "DLChatModelBtn", true);
+						setClass(btn, "DLChatRowHidden", false);
+						var label = $.CreatePanel("Label", btn, "");
+						if (label) writeText(label, name);
+						// 用 SetPanelEvent 而不是布局属性：模型名里有 : 和 /，
+						// 拼进 onactivate="..." 字符串既难看又容易出错
+						if (typeof btn.SetPanelEvent === "function") {
+							btn.SetPanelEvent("onactivate", function () { self.pickModel(name); });
+						}
+						self.modelBtns.push({ name: name, btn: btn });
+					} catch (e) {}
+				})(this.models[i], this, i);
+			}
+			this.highlightModel();
+		},
+
+		toggleModelList: function () {
+			var list = this.el("DLChatSetModelList");
+			if (!list) return;
+			this.listOpen = !this.listOpen;
+			setClass(list, "DLChatSetModelListOpen", this.listOpen);
+			if (!this.listOpen) return;
+			if (!(this.modelBtns || []).length) {
+				this.status("读取模型列表…");
+				this.loadModels();
+			} else {
+				this.status("点一项切换模型，然后按「保存并生效」");
+			}
+		},
+
+		pickModel: function (name) {
+			if (!this.local) return;
+			this.local.model = name;
+			this.dirty = true;
+			this.listOpen = false;
+			var list = this.el("DLChatSetModelList");
+			if (list) setClass(list, "DLChatSetModelListOpen", false);
+			this.render();
+			this.status("已选：" + name + "（按「保存并生效」应用）");
+		},
+
+		// 切换来源：模型列表必须重新取，而且旧来源的模型名要立刻清掉 ——
+		// 否则会出现"来源=DeepSeek、模型=hf.co/tencent/Hy-MT2..."这种组合，
+		// 保存后云端收到一个不存在的模型名，报的错还很难懂。
+		//
+		// 为什么不能清空列表控件再重建：Panorama 里 DeleteAsync 不生效（实测），
+		// 每次重建都会把旧项留在界面上、越堆越多。所以改成"不删只重建"：
+		// 同一个 id 的 CreatePanel 会复用已有面板，多余的旧项用可见性挡住。
+		onProviderChanged: function () {
+			var self = this;
+			this.models = [];
+			this.modelBtns = [];
+			this.listOpen = false;
+			var list = this.el("DLChatSetModelList");
+			if (list) setClass(list, "DLChatSetModelListOpen", false);
+			if (this.local) this.local.model = "";
+			var pname = this.providerName();
+			this.status("已切到「" + (this.PROVIDER.label[pname] || pname)
+				+ "」，读取模型列表…");
+			this.loadModels(function () {
+				if (!self.local) return;
+				if (!self.local.model && self.models.length) {
+					// 新来源还没选模型：默认取第一个（云端就是 deepseek-flash）
+					self.local.model = self.models[0];
+					self.dirty = true;
+					self.render();
+					self.status("默认模型：" + self.models[0]
+						+ "（要换就点上面的「翻译模型」）");
+				} else {
+					self.render();
+				}
+			}, true);
+		},
+
+		status: function (text) { this.setText("DLChatSetStatus", text); },
+		testText: function (text) { this.setText("DLChatSetTest", text); },
+
+		// 把 compact 响应的短键解成面板内部用的名字。
+		// 桥那边为了省标题通道的长度把字段名压成了一个词（recv/send/disp/…），
+		// 集中在这里翻译一次，别让 c.recv 这种天书散落到业务代码里。
+		decodeCompact: function (res) {
+			var c = compact(res);
+			if (c.disp === undefined || c.trig === undefined || c.model === undefined) {
+				return null;                    // 地基字段缺了 = 响应不完整
+			}
+			return {
+				receive_enabled: !!c.recv,
+				send_enabled: !!c.send,
+				display_mode: c.disp,
+				outgoing_mode: c.out || "bilingual",
+				show_original_on_hover: !!c.hover,
+				trigger: c.trig,
+				keep_alive: c.keep,
+				glossary: !!c.gloss,
+				provider: this.PROVIDER.byCode[c.prv] || "local",
+				// 分隔符：桥传单字母码 p/f/s，认不出就用半角竖线
+				separator: this.SEP_NAME[c.sep] || "pipe",
+				model: c.model
+			};
+		},
+
+		// 收到设置响应后落到面板状态（show / 自检共用这一条路）
+		applyCompact: function (res) {
+			var c = compact(res);
+			var decoded = this.decodeCompact(res);
+			if (!decoded) return false;
+			this.remote = res;
+			this.local = decoded;
+			this.dirty = false;
+			this.persisted = !!c.persisted;
+			this.backend = res.backend || null;
+			this.keySet = c.keySet !== false;
+			this.render();
+			this.status(this.summary());
+			return true;
+		},
+
+		// 打开面板：显示 + 读一次设置（compact，避免标题被截断）
+		show: function () {
+			var panel = this.el("DLChatSettings");
+			if (!panel) return;
+			setClass(panel, "DLChatSettingsOpen", true);
+			this.open = true;
+			if (this.local) this.render();
+			this.status("读取设置…");
+			var self = this;
+			bus.send("settings", { view: "compact" }, REQUEST_TIMEOUT, function (res) {
+				if (!res || !res.ok) {
+					self.status("读取失败：" + shortError(res && res.error));
+					return;
+				}
+				if (res.trimmed) {
+					// 桥发现响应太长（模型名很长时会），主动裁掉了统计字段。
+					// 面板照常能用，但得说一声，免得看到"请求 0"以为桥没在工作。
+					self.status("⚠ 模型名较长，响应被裁剪，统计数字可能少显示"
+						+ "（功能不受影响）");
+				}
+				// 截断/半包检测：字段缺了就说明响应不完整。以前这种情况会静默显示一片
+				// undefined，看着像"设置全丢了"。
+				if (!self.applyCompact(res)) {
+					self.status("读取到的设置不完整（响应可能被截断）"
+						+ (res.error ? "：" + res.error : "")
+						+ "，请点「重新读取」；若反复出现请告知");
+				}
+			});
+		},
+
+		summary: function () {
+			// compact 视图是短键 + 扁平数字（req/hit/latIn/latOut/vram/loaded）。
+			// 早期版本这里读的是 resource.stats 那条路径 —— 对 compact 响应永远是 0，
+			// 所以状态行一直显示"请求 0 / 命中 0"，看着像没在工作。
+			var s = compact(this.remote);
+			var beText = "";
+			var pname = this.providerName();
+			if (!this.keySet && pname !== "local") {
+				beText = " · ⚠ 没配 API Key（浏览器开 http://localhost:8791/settings 填一次）";
+			} else if (this.isCloud()) {
+				// 云端没有"显存里的模型"这回事，别拿 Ollama 的 vram 去吓用户
+				beText = " · " + (this.PROVIDER.short[pname] || pname);
+			} else if (s.loaded === false) beText = " · 模型未载入（下一条会慢）";
+			else if (typeof s.vram === "number" && s.vram >= 0) {
+				beText = " · 模型 " + s.vram + "% 在显存"
+					+ (s.vram < 99 ? "（部分在 CPU，会变慢）" : "");
+			}
+			return "设置来源：" + (this.persisted ? "设置文件（保存后重启依然有效）"
+					: "默认值（还没保存过）")
+				+ " · 桥：" + (bus.bridgeUp ? "在线" : "离线")
+				+ beText
+				+ " · 请求 " + (s.req || 0) + " / 命中 " + (s.hit || 0)
+				+ " · 延迟 英→中 " + (s.latIn ? s.latIn + "ms" : "-")
+				+ "，中→英 " + (s.latOut ? s.latOut + "ms" : "-");
+		},
+
+		hide: function () {
+			var panel = this.el("DLChatSettings");
+			if (panel) setClass(panel, "DLChatSettingsOpen", false);
+			this.open = false;
+		}
+	};
+
+	// 布局 onactivate 需要的全局函数（Panorama 的 onactivate 只能调到全局名字）
+	// 快捷键：F8 开/关设置面板。
+	// panorama.dll 里有 RegisterKeyBind 的报错文案，说明接口存在，但报错说第一个参数
+	// 得是面板对象或"输入命名空间字符串"。这里两种都试一遍，成功与否记进诊断码，
+	// 不成功也不影响 —— 按钮和 /tongyi 命令仍然可用。
+	function registerHotkey() {
+		var bound = "";
+		function bind(first) {
+			try {
+				$.RegisterKeyBind(first, "F8", function () {
+					if (ui.open) ui.hide(); else ui.show();
+				});
+				return true;
+			} catch (e) { return false; }
+		}
+		try {
+			if (typeof $.RegisterKeyBind === "function") {
+				var root = null;
+				try { root = $.GetContextPanel(); } catch (e) {}
+				if (root && bind(root)) bound = "panel";
+				else if (bind("")) bound = "namespace";
+			}
+		} catch (e) {}
+		channel.hotkey = bound || "none";
+	}
+
+	// 所有入口包一层：单点出错只影响那一次操作，并且把原因显示出来
+	function safe(name, fn) {
+		return function () {
+			try {
+				return fn.apply(null, arguments);
+			} catch (e) {
+				try { ui.status(name + " 出错：" + e); } catch (e2) {}
+				try { $.Msg("[dlchat] " + name + " failed: " + e + "\n"); } catch (e3) {}
+			}
+		};
+	}
+
+	// 自检钩子：给离线测试台（scripts/js_check.js）用，直接驱动界面内部路径。
+	// 为什么需要：设置读取只在拿到桥响应后才发生，离线跑不到那条路 —— 而"少一个
+	// 字段就让整块界面卡死"正是发生在那里（真踩过）：render() 抛异常 -> show() 在
+	// 发请求之前中断 -> 状态行永远停在"读取设置…"。这里只做本地渲染，不联网。
+	//
+	// 第二个钩子喂一份**真实的 compact 响应**（含短键）走一遍解码 + 渲染，
+	// 这样"桥改了字段名、面板没跟上"这类事故不用进游戏就能发现。
+	function exportSelfTest() {
+		globalThis.DLChatSelfTest = function () {
+			var report = [];
+			function step(name, fn) {
+				try { fn(); report.push(name + ":ok"); }
+				catch (e) { report.push(name + ":FAIL(" + e + ")"); }
+			}
+			step("render", function () {
+				ui.models = ["test/model-a", "test/model-b"];
+				ui.local = {
+					receive_enabled: true, send_enabled: false,
+					display_mode: "bilingual", outgoing_mode: "bilingual",
+					show_original_on_hover: false,
+					trigger: "double_space", keep_alive: "-1", glossary: true,
+					provider: "local",
+					model: "test/model-b"
+				};
+				ui.render();
+			});
+			step("cycleOutgoing", function () { ui.local.outgoing_mode = "english_only"; ui.render(); });
+			step("cycleProvider", function () {
+				// 只切本地状态并重绘：不联网（loadModels 那条路留给联调阶段验）
+				ui.local.provider = "deepseek";
+				ui.local.model = "deepseek-flash";
+				ui.render();
+				if (!ui.isCloud()) throw new Error("provider 判定没生效");
+			});
+			step("cycleProviderBack", function () {
+				ui.local.provider = "local";
+				ui.local.model = "test/model-b";
+				ui.render();
+			});
+			step("providerLabel", function () { ui.setText("DLChatSet_provider_l", "x"); });
+			step("buildModelList", function () { ui.buildModelList(); });
+			step("toggleModelList", function () { ui.toggleModelList(); });
+			step("pickModel", function () { ui.pickModel("test/model-a"); });
+			step("summary", function () { ui.summary(); });
+			step("status", function () { ui.status("selftest"); });
+			step("hide", function () { ui.hide(); });
+			return report.join(" | ");
+		};
+
+		globalThis.DLChatSelfTestCompact = function (res) {
+			var out = [];
+			function step(name, fn) {
+				try { var v = fn(); out.push(name + ":" + (v === undefined ? "ok" : v)); }
+				catch (e) { out.push(name + ":FAIL(" + e + ")"); }
+			}
+			step("applyCloud", function () {
+				if (!ui.applyCompact(res)) throw new Error("applyCompact 返回 false");
+				if (ui.local.provider !== "deepseek") {
+					throw new Error("来源没解出来: " + ui.local.provider);
+				}
+				if (ui.local.model !== "deepseek-flash") {
+					throw new Error("模型没解出来: " + ui.local.model);
+				}
+				if (ui.local.display_mode !== "bilingual") throw new Error("显示方式没解出来");
+				if (ui.local.trigger !== "double_space") throw new Error("触发键没解出来");
+				if (ui.keySet !== false) throw new Error("keySet 没解出来");
+				if (!ui.isCloud()) throw new Error("isCloud 判定错");
+				// 分隔符：桥传单字母码，要解成选项名并拼出真正的字符串
+				var want = res.sep === "f" ? "full" : (res.sep === "s" ? "space" : "pipe");
+				if (ui.local.separator !== want) {
+					throw new Error("分隔符没解出来: " + ui.local.separator);
+				}
+				if (!separatorText()) throw new Error("separatorText 返回空");
+				return "status=" + ui.summary() + " sep=" + separatorText();
+			});
+			step("summaryNumbers", function () {
+				var s = ui.summary();
+				if (s.indexOf("请求 7") < 0) throw new Error("统计数字没渲染: " + s);
+				if (s.indexOf("Key") < 0) throw new Error("缺 Key 没提示: " + s);
+				return "ok";
+			});
+			step("truncatedResponse", function () {
+				// 半包（少掉地基字段）必须被识别成"不完整"，而不是渲染出一片 undefined
+				if (ui.applyCompact({ ok: true, recv: true })) {
+					throw new Error("半包响应竟然被接受了");
+				}
+				return "ok";
+			});
+			return out.join(" | ");
+		};
+
+		// 传输层探针：给离线测试台看"请求到底发出去了没有"
+		globalThis.DLChatSelfTestBus = function () {
+			try {
+				return "mode=" + channel.mode + " probe=" + channel.probeError
+					+ " up=" + bus.bridgeUp + " inflight=" + (bus.inflight ? bus.inflight.op : "-")
+					+ " queued=" + bus.queue.length
+					+ " panel=" + !!bus.findPanel();
+			} catch (e) { return "bus_probe_threw:" + e; }
+		};
+		globalThis.DLChatSelfTestProbe = function (row) {
+			try {
+				var info = readMessageRow(row, "chat");
+				if (!info) return "info=null";
+				return "text=" + JSON.stringify(info.text)
+					+ " surface=" + info.surface
+					+ " own=" + info.own + " quick=" + info.quick
+					+ " sender=" + JSON.stringify(info.sender)
+					+ " skip=" + JSON.stringify(shouldSkipRow(info))
+					+ " hasContents=" + isValid(info.contents);
+			} catch (e) {
+				return "probe_threw:" + e;
+			}
+		};
+
+		// 识别层摘要：给离线测试台用。它**主动调用真实扫描函数**（不是复制一套逻辑），
+		// 所以"读一行"的规则改了、测试台立刻跟着变。
+		// 挂载点验证：把译文**真的画一遍**，然后报告它挂到了哪个容器下面。
+		// 不需要桥：先往本地缓存塞一条译文，再走正常的"命中缓存"路径。
+		// 这条是给"译文贴错容器"（气泡跑到外面、聊天窗叠字）兜底的断言。
+		globalThis.DLChatSelfTestAttach = function (row, text, chinese) {
+			try {
+				var info = readMessageRow(row, "chat");
+				if (!info) return "info=null";
+				var rec = {
+					panel: row, contents: info.contents, textLabel: info.textLabel || null,
+					original: info.text, own: false, quick: false, surface: info.surface,
+					chinese: "", orig: null, trans: null, logged: true,
+					applied: false, pending: false, retry: 0
+				};
+				cachePut(text, chinese);
+				translateRowText(rec, text);
+				var parent = null;
+				var parentClasses = "";
+				try {
+					parent = rec.trans ? rec.trans.GetParent() : null;
+					parentClasses = panelClasses(parent);
+				} catch (e) {}
+				var hostClasses = panelClasses(rec.contents);
+				// 底色和尺寸：这两个是"看不见"类问题的判据。
+				// 官方聊天样式会把字画在白色气泡上，所以译文必须自带底色；
+				// 官方容器又有固定尺寸和 overflow，所以译文必须有贴合内容的宽高。
+				var bg = "";
+				try { bg = (rec.trans && rec.trans.style) ? rec.trans.style.backgroundColor : ""; } catch (e) {}
+				var box = function (x) {
+					if (!isValid(x)) return "-";
+					var w = -1, h = -1;
+					try { w = (typeof x.GetWidth === "function") ? Math.round(x.GetWidth()) : -1; } catch (e) {}
+					try { h = (typeof x.GetHeight === "function") ? Math.round(x.GetHeight()) : -1; } catch (e) {}
+					return w + "x" + h;
+				};
+				return "surface=" + info.surface
+					+ " host=" + (hostClasses || "(none)")
+					+ " textParent=" + (parentClasses || "(none)")
+					+ " attached=" + isValid(rec.trans)
+					+ " sameHost=" + (parent === rec.contents)
+					+ " bg=" + JSON.stringify(bg)
+					+ " lbl=" + box(rec.trans)
+					+ " hostBox=" + box(rec.contents);
+			} catch (e) {
+				return "attach_threw:" + e;
+			}
+		};
+
+		// 聊天窗"双语行内"自检：**不改全局模式**（host 里的 hints 是桥下发的，测试台不该动），
+		// 直接验那两件最容易做错的事 ——
+		//   ① 正文那一格写成了 "英文 + 分隔符 + 中文"（而不是另起一个标签挂在气泡下面被裁掉）；
+		//   ② 行上带 DLChatChatInline，用来把"悬停显示原文"那份收掉。
+		// 返回的字符串是给离线测试台断言用的，格式别随便改。
+		globalThis.DLChatSelfTestInline = function (row, text, chinese) {
+			try {
+				var info = readMessageRow(row, "chat");
+				if (!info) return "info=null";
+				var rec = {
+					panel: row, contents: info.contents, textLabel: info.textLabel || null,
+					original: info.text, own: false, quick: false, surface: "chat",
+					chinese: "", orig: null, trans: null, logged: true,
+					applied: false, pending: false, retry: 0
+				};
+				var settled = false;
+				cachePut(text, chinese);
+				translateRowText(rec, text);
+				if (!rec.pending && rec.applied) settled = true;
+				var host = translationHost(rec);
+				var target = rec.textLabel;
+				if (!isValid(target)) target = findTextLabel(host);
+				var shown = readText(target);
+				var origLbl = isValid(rec.orig) ? readText(rec.orig) : "(none)";
+				var want = rec.original + (separatorText() || " | ") + chinese;
+				return "surface=" + info.surface
+					+ " settled=" + settled
+					+ " text=" + JSON.stringify(shown)
+					+ " want=" + JSON.stringify(want)
+					+ " match=" + (shown.indexOf(chinese) !== -1
+						&& shown.indexOf(rec.original) === 0)
+					+ " inline=" + hasClass(row, "DLChatChatInline")
+					+ " bilingualClass=" + hasClass(row, "DLChatBilingual")
+					+ " orig=" + JSON.stringify(origLbl);
+			} catch (e) {
+				return "inline_threw:" + e;
+			}
+		};
+
+		globalThis.DLChatSelfTestRows = function () {			var before = rows.length;
+			try { scanAllSurfaces(); } catch (e) { return "scan:FAIL(" + e + ")"; }
+			var counts = {};
+			var queued = [];
+			for (var i = 0; i < rows.length; i++) {
+				var r = rows[i];
+				var key = r.skipped || ((r.pending || r.applied) ? "translated" : "unknown");
+				counts[key] = (counts[key] || 0) + 1;
+				// "本轮新排进翻译的"：算完就清标记，避免跨轮重复计数
+				if (r.queuedNow) { queued.push(r.original); r.queuedNow = false; }
+			}
+			var parts = [];
+			for (var k in counts) parts.push(k + "=" + counts[k]);
+			var detail = [];
+			for (var m = 0; m < rows.length; m++) {
+				var one = rows[m];
+				if (!one.skipped) {
+					detail.push(JSON.stringify({
+						t: one.original, s: one.surface, p: !!one.pending,
+						a: !!one.applied, r: one.retry || 0
+					}));
+				}
+			}
+			return "rows=" + rows.length + "(+" + (rows.length - before) + ") "
+				+ parts.sort().join(",") + " | queued=" + JSON.stringify(queued)
+				+ (detail.length ? " | detail=" + detail.join(" ") : "");
+		};
+
+		// 本轮新增的三块逻辑也拉进离线测试台：都是"纯计算"，不需要桥在线。
+		//   · 输入正文的清洗（换行/连续空格）
+		//   · 译文缓存（同一句只翻一次）
+		//   · 队列优先级（玩家输入插队）
+		globalThis.DLChatSelfTestQueue = function () {
+			var out = [];
+			function step(name, fn) {
+				try { var v = fn(); out.push(name + ":" + (v === undefined ? "ok" : v)); }
+				catch (e) { out.push(name + ":FAIL(" + e + ")"); }
+			}
+
+			step("sanitize", function () {
+				if (sanitizeBody("小心\n对面  绕后 ") !== "小心 对面 绕后") {
+					throw new Error("清洗结果: " + JSON.stringify(sanitizeBody("小心\n对面  绕后 ")));
+				}
+				if (sanitizeBody("中文\r\n\r\n英文") !== "中文 英文") {
+					throw new Error("换行没压平");
+				}
+				if (sanitizeBody(null) !== "") throw new Error("null 没处理");
+				return "ok";
+			});
+
+			step("cache", function () {
+				// 这是测试台自己的缓存实例：不往真实缓存里灌测试数据
+				var map = {}, order = [];
+				function get(t) {
+					var hit = map[t];
+					if (typeof hit !== "string") return null;
+					var at = order.indexOf(t);
+					if (at !== -1) { order.splice(at, 1); order.push(t); }
+					return hit;
+				}
+				function put(t, v) {
+					if (typeof map[t] !== "string") order.push(t);
+					map[t] = v;
+					while (order.length > 3) delete map[order.shift()];
+				}
+				put("b b b", "撤撤撤");
+				if (get("b b b") !== "撤撤撤") throw new Error("命中不了");
+				// 超过上限要被淘汰（防内存无限长）
+				put("a", "1"); put("b", "2"); put("c", "3");
+				if (get("b b b") !== null) throw new Error("超上限没淘汰");
+				// 换行/空格不同的同一句必须算不同 key（不能张冠李戴）
+				if (get("b b  b") !== null) throw new Error("key 被错误归一化");
+				return "ok";
+			});
+
+			step("priority", function () {
+				// 队列是严格串行的，玩家自己触发的（lane=fast）必须排到前面去，
+				// 否则要排在屏幕上那堆聊天行后面 —— 那是体感上最像"卡住"的地方。
+				var q = [], seq = 0;
+				function push(lane) {
+					var job = { n: ++seq, lane: lane || "bg" };
+					if (lane === "fast") {
+						var at = 0;
+						while (at < q.length && q[at].lane === "fast") at++;
+						q.splice(at, 0, job);
+					} else {
+						q.push(job);
+					}
+					return job;
+				}
+				push(); push(); push();                 // 三条后台（聊天行）
+				var mine = push("fast");                // 玩家输入
+				if (q[0] !== mine) throw new Error("插队没生效，队首是 " + q[0].n);
+				var mine2 = push("fast");               // 再来一条玩家输入
+				if (q[1] !== mine2) throw new Error("第二条插队位置不对");
+				if (q[2].lane !== "bg") throw new Error("后台任务被挤没了");
+				return "ok";
+			});
+
+			return out.join(" | ");
+		};
+	}
+
+	function exportGlobals() {
+		try {
+			globalThis.DLChatOpenSettings = safe("打开设置", function () { ui.show(); });
+			globalThis.DLChatCloseSettings = safe("关闭设置", function () { ui.hide(); });
+			globalThis.DLChatToggle = safe("切换", function (key) {
+				if (!ui.local) return;
+				ui.local[key] = !ui.local[key];
+				ui.dirty = true;
+				ui.render();
+			});
+			globalThis.DLChatCycle = safe("循环", function (key) {
+				if (!ui.local) return;
+				var list = ui.CYCLE[key] || [];
+				if (!list.length) return;
+				var cur = list.indexOf(ui.local[key]);
+				ui.local[key] = list[(cur + 1) % list.length];
+				ui.dirty = true;
+				if (key === "provider") ui.onProviderChanged();
+				ui.render();
+			});
+			globalThis.DLChatSaveSettings = safe("保存", function () {
+				if (!ui.local) {
+					// 读取还没回来就点保存：明确告诉用户，不要静默什么都不做
+					ui.status("还没读取到设置，等状态行变成桥信息后再保存");
+					return;
+				}
+				ui.status("保存中…");
+				// prv 是来源的单字母码：桥据此切 base_url、必要时把模型名换成该来源的
+				// 有效值（比如从本地模型名切到 deepseek-flash）。
+				var payload = {};
+				for (var k in ui.local) payload[k] = ui.local[k];
+				payload.prv = ui.PROVIDER.byName[ui.local.provider] || "";
+				bus.send("settings", payload, REQUEST_TIMEOUT, function (res) {
+					if (res && res.ok) {
+						ui.remote = res.settings || null;
+						ui.dirty = false;
+						ui.persisted = true;
+						// 回执里带上来源/模型/密钥状态，面板立刻显示新状态，不用重新读一遍
+						var back = res.settings || {};
+						if (back.pv) {
+							ui.local.provider = ui.PROVIDER.byCode[back.pv]
+								|| ui.local.provider;
+						}
+						if (back.model) ui.local.model = back.model;
+						ui.render();
+						ui.status("已保存并生效"
+							+ (res.saved ? "（已写入设置文件，重启后依然有效）" : "")
+							+ (res.modelReloaded ? "（模型已重载，首次翻译会慢几秒）" : "")
+							+ (res.partial ? "（回执不完整，不影响生效）" : ""));
+					} else {
+						ui.status("保存失败：" + shortError(res && res.error));
+					}
+				});
+			});
+			globalThis.DLChatToggleModels = safe("模型下拉", function () { ui.toggleModelList(); });
+			globalThis.DLChatReloadSettings = safe("重新读取", function () { ui.show(); });
+			// 翻错了/超时了之后的补救：重译聊天区里最近一条英文
+			globalThis.DLChatRetranslateLast = safe("重译最近一条", function () {
+				retranslateLast();
+			});
+			globalThis.DLChatTestSettings = safe("试翻", function () {
+				ui.testText("测试中…（本地首次要等模型载入；云端要等一次网络往返）");
+				bus.send("settings/test",
+					{ text: "he is low, dive him" }, 90, function (res) {
+						if (res && res.ok) {
+							ui.testText("英→中 " + res.translation + "  (" + res.ms + "ms)"
+								+ "   |   中→英 " + res.back + "  (" + res.backMs + "ms)");
+						} else if (res && res.hint) {
+							// 密钥没配这种情况桥会额外给一句"去哪配"，直接显示出来
+							ui.testText("测试失败：" + shortError(res.error) + " —— " + res.hint);
+						} else {
+							ui.testText("测试失败：" + shortError(res && res.error));
+						}
+					});
+			});
+		} catch (e) {
+			// 这里如果出错，说明布局里的 onactivate 名字和脚本对不上
+			try { $.Msg("[dlchat] exportGlobals failed: " + e + "\n"); } catch (e2) {}
+		}
+	}
+
+	// 状态灯：绿=能用（正常）、黄=最近有失败但还在凑合、红=不通
+	// 注意不要把"走兜底通道"标成黄：引擎已经删掉了直连 API
+	// （panorama.dll: "ERROR: AsyncWebRequest has been removed."），
+	// 面板通道就是这个版本唯一的通道，把它当成异常会让灯永远是黄的、等于没信息。
+	// 通道类型放到设置面板的状态行里显示，那才是看细节的地方。
+	function updateDot() {
+		var dot = ui.el("DLChatDot");
+		if (!dot) return;
+		var up = bus.bridgeUp;
+		var degraded = up && bus.consecutiveFailures > 0;
+		setClass(dot, "DLChatDotOk", up && !degraded);
+		setClass(dot, "DLChatDotWarn", degraded);
+		setClass(dot, "DLChatDotBad", !up);
+	}
+
+	function diag() {
+		var p = channel.mode === "http"
+			? ("ok-" + (channel.httpStyle || "?"))
+			: (channel.probeError || "?").replace(/^threw:/, "threw");
+		return "P:" + p.substring(0, 12)
+			+ " A:" + apiProbe.arity
+			+ " R:" + apiProbe.retType
+			+ " K:" + apiProbe.keys.substring(0, 16)
+			+ " C:" + (apiProbe.cbShape || "-")
+			+ " V:" + (channel.panelOnScreen === null ? "-" : (channel.panelOnScreen ? 1 : 0))
+			+ " E:" + channel.eventCount + "/" + channel.eventsRegistered
+			+ " T:" + channel.titleKind
+			+ " N:" + channel.navCount
+			+ " G:" + (channel.pingLocal === null ? "-" : (channel.pingLocal ? 1 : 0))
+			+ "/" + (channel.pingIp === null ? "-" : (channel.pingIp ? 1 : 0));
+	}
+
+	// 面板是不是真的"在屏幕上"：一路往上看父节点，任何一层 visible=false 就说明
+	// 整棵子树都没渲染。**这点很关键**：聊天面板关着的时候 CitadelChat 是收起的，
+	// 里面的 HTML 面板不会渲染 —— 此时 SetURL 导航会被丢掉，而且有可能把面板弄成
+	// "死面板"，之后怎么导航都没反应（"面板未加载"就是这么来的）。
+	function panelOnScreen(panel) {
+		if (!isValid(panel)) return false;
+		var node = panel;
+		for (var depth = 0; depth < 8 && isValid(node); depth++) {
+			try { if (node.visible === false) return false; } catch (e) {}
+			try {
+				if (typeof node.IsVisible === "function" && !node.IsVisible()) return false;
+			} catch (e) {}
+			try { node = node.GetParent(); } catch (e) { break; }
+		}
+		return true;
+	}
+
+	// 等面板真的显示出来再发请求；期间只轮询、不导航
+	function waitForPanel(deadline, done) {
+		var panel = bus.findPanel();
+		if (!panel) { done(false); return; }
+		if (panelOnScreen(panel)) { done(true); return; }
+		if (nowSeconds() > deadline) { done(false); return; }
+		try { $.Schedule(0.5, function () { waitForPanel(deadline, done); }); }
+		catch (e) { done(false); }
+	}
+
+	// 导航探针：让隐藏面板加载桥的 /ping 页（**没有任何 fetch**，标题就是标记串）。
+	// 这一步把"面板导航/标题读回"和"桥页面里的 fetch"彻底分开：
+	//   G:1  -> 面板通道本身是好的，问题在 /bridge 页面
+	//   G:0  -> 面板导航压根不工作（URL 被拦，或者那根本不是可用的 HTML 面板）
+	// 同时分别试 localhost 和 127.0.0.1，验证"回环 IP 被拦"的说法。
+	function panelPing(host, marker, tries, done) {
+		var panel = bus.findPanel();
+		if (!panel || typeof panel.SetURL !== "function") { done(false); return; }
+		if (!panelOnScreen(panel)) { done(false); return; }
+		var url = "http://" + host + ":" + BRIDGE_PORT + "/ping?m=" + marker;
+		try { panel.SetURL(url); } catch (e) { done(false); return; }
+		var deadline = nowSeconds() + 8;
+		function poll() {
+			var title = bus.readTitle();
+			if (title && title.indexOf(marker) !== -1) { done(true); return; }
+			if (nowSeconds() > deadline) {
+				if (tries > 1) { panelPing(host, marker, tries - 1, done); return; }
+				done(false);
+				return;
+			}
+			try { $.Schedule(0.2, poll); } catch (e) { done(false); }
+		}
+		try { $.Schedule(0.2, poll); } catch (e) { done(false); }
+	}
+
+	function probePanelNavigation(done) {
+		panelPing("localhost", "DLPINGL", 1, function (okLocal) {
+			channel.pingLocal = okLocal;
+			if (okLocal) {
+				// 本地回环通了就够了，不用再折腾 IP 形式
+				channel.pingIp = channel.pingIp === null ? false : channel.pingIp;
+				done();
+				return;
+			}
+			panelPing("127.0.0.1", "DLPINGI", 1, function (okIp) {
+				channel.pingIp = okIp;
+				done();
+			});
+		});
+	}
+
+	function probeHttpChannel() {
+		if (channel.mode !== null) return channel.mode === "http";
+		var hasFn = false;
+		try { hasFn = typeof $.AsyncWebRequest === "function"; } catch (e) {}
+		if (!hasFn) {
+			channel.mode = "panel";
+			channel.probeError = "no_fn";
+			return false;
+		}
+		var url = BRIDGE_BASE + "/api/v1/health";
+		// 形态 1：现代 API，返回 Promise<string>
+		try {
+			var probe = $.AsyncWebRequest(url, { type: "GET", timeout: 3000 });
+			if (probe && typeof probe.then === "function") {
+				channel.mode = "http";
+				channel.httpStyle = "promise";
+				try { probe.then(function () {}, function () {}); } catch (e) {}
+				return true;
+			}
+			// 形态 2：旧 API，返回一个带 SendRequest 的请求对象
+			if (probe && typeof probe.SendRequest === "function") {
+				channel.mode = "http";
+				channel.httpStyle = "send";
+				return true;
+			}
+			channel.probeError = "no_promise_no_sendrequest";
+		} catch (e) {
+			// 典型：AsyncWebRequest has been removed（函数在但一调就抛）
+			channel.probeError = "threw:" + e;
+			try {
+				var retry = $.AsyncWebRequest(url);
+				if (retry && typeof retry.SendRequest === "function") {
+					channel.mode = "http";
+					channel.httpStyle = "send";
+					return true;
+				}
+				channel.probeError += "|retry_none";
+			} catch (e2) {
+				channel.probeError += "|retry_threw";
+			}
+		}
+		channel.mode = "panel";
+		return false;
+	}
+
+	// ---------------------------------------------------------------- 传输层
+	// 串行队列 + 唯一请求 id：title 是单槽通道，靠 id 前缀区分"这是谁的响应"，
+	// 迟到的旧响应因为 id 不同会被直接丢弃，不会串台。
+	var bus = {
+		panel: null,
+		seq: 0,
+		inflight: null,
+		queue: [],
+		bridgeUp: false,
+		consecutiveFailures: 0,
+		firstDone: false,
+
+		findPanel: function () {
+			if (isValid(this.panel)) return this.panel;
+			var root = null;
+			try { root = $.GetContextPanel(); } catch (e) { return null; }
+			var found = null;
+			try { found = root.FindChildTraverse("DLChatBridge"); } catch (e) {}
+			if (!found) found = findByClass(root, "DLChatBridge");
+			if (found) this.panel = found;
+			return found;
+		},
+
+		readTitle: function () {
+			// 三个来源合起来看：面板事件（主） + panel.title + 属性回读（兜底）
+			var parts = [];
+			if (channel.lastEventText) parts.push(channel.lastEventText);
+			var p = this.panel;
+			if (isValid(p)) {
+				try { var t = p.title; if (typeof t === "string" && t) parts.push(t); } catch (e) {}
+				try {
+					var a = p.GetAttributeString("title", "");
+					if (a) parts.push(a);
+				} catch (e) {}
+			}
+			return parts.join(" ");
+		},
+
+		// 面板事件来了：先看有没有我们要的响应，再交给等着的请求去判定
+		onPanelText: function (text) {
+			var hay = String(text || "");
+			if (hay.indexOf("lct-alive") !== -1) channel.pageAlive = true;
+			var cur = this.inflight;
+			if (!cur || !cur.panelMode || !cur.id) return;
+			var marker = TITLE_PREFIX + cur.id;
+			var idx = hay.indexOf(marker);
+			if (idx === -1) return;
+			var body = hay.substring(idx + marker.length);
+			// 事件文本后面可能粘着别的字段，截到最后一个 } 为止
+			var end = body.lastIndexOf("}");
+			if (end !== -1) body = body.substring(0, end + 1);
+			var data = parseLoose(body);
+			if (!data) { channel.lastBadBody = body.substring(0, 120); }
+			this.inflight = null;
+			this.applyResult(cur, data || { ok: false, error: "event_bad_json" });
+		},
+
+		// 发一个请求：op 走桥的路由（translate / health / log ...），payload 是 JSON 对象。
+		//
+		// lane="fast" 是**插队**：队列严格串行（一次只有一个在途请求），而聊天行翻译
+		// 会一次性排很多条。玩家按了触发键、或者点了「试翻/保存」，不该排在那些后面
+		// 干等（6 条英文 ≈ 5 秒）—— 那是体感上最像"卡住"的地方。插队只改顺序，
+		// 不改任何协议。
+		send: function (op, payload, timeout, cb, lane) {
+			var job = { op: op, payload: payload, cb: cb,
+				timeout: timeout || REQUEST_TIMEOUT, lane: lane || "bg" };
+			if (lane === "fast") {
+				var at = 0;
+				while (at < this.queue.length && this.queue[at].lane === "fast") at++;
+				this.queue.splice(at, 0, job);
+			} else {
+				this.queue.push(job);
+			}
+			this.pump();
+		},
+
+		// 只用来推诊断日志，不关心结果
+		log: function (payload) {
+			if (!DEBUG) return;
+			this.send("log", payload, 8, null);
+		},
+
+		pump: function () {
+			if (this.inflight || !this.queue.length) return;
+			var job = this.queue[0];
+			if (probeHttpChannel()) {
+				this.queue.shift();
+				this.sendViaHttp(job);
+				return;
+			}
+			var panel = this.findPanel();
+			if (!panel || typeof panel.SetURL !== "function") {
+				this.queue.shift();
+				if (job.cb) job.cb({ ok: false, error: "no_bridge_panel" });
+				return;
+			}
+			this.queue.shift();
+			this.sendViaPanel(job, panel);
+		},
+
+		// ---- 通道 1：引擎 HTTP 直连（每条请求独立，最可靠）----
+		sendViaHttp: function (job) {
+			var body = job.payload ? JSON.stringify(job.payload) : "{}";
+			var url = BRIDGE_BASE + "/api/v1/" + job.op + "?d=" + enc(body);
+			var self = this;
+			var settle = function (result) {
+				if (self.inflight !== job) return;      // 已超时处理过
+				self.inflight = null;
+				self.applyResult(job, result);
+			};
+			var parse = function (resp) {
+				if (resp && typeof resp === "object") return resp;   // 引擎直接给了对象
+				var data = parseLoose(String(resp));                 // 允许被截断的回执
+				return data || { ok: false, error: "http_bad_json" };
+			};
+			this.inflight = job;
+			try {
+				$.Schedule((job.timeout || REQUEST_TIMEOUT) + 5, function () {
+					settle({ ok: false, error: "http_timeout" });
+				});
+			} catch (e) {}
+			try {
+				var req = $.AsyncWebRequest(url, {
+					type: "GET", timeout: (job.timeout || REQUEST_TIMEOUT) * 1000
+				});
+				if (req && typeof req.SendRequest === "function") {
+					req.SendRequest(function (status, resp) {
+						settle(parse(resp !== undefined ? resp : status));
+					});
+					return;
+				}
+				if (req && typeof req.then === "function") {
+					req.then(function (resp) { settle(parse(resp)); },
+						function (err) {
+							settle({ ok: false, error: "http_failed:" + (err && err.message ? err.message : err) });
+						});
+					return;
+				}
+				// 启动时探测到的是"回调形态"，就按那个形态发
+				if (channel.httpStyle === "cb" && channel.cbShape) {
+					this.callWithCallback(channel.cbShape, url, job, settle, parse);
+					return;
+				}
+				channel.mode = "panel";             // 探测通过但这里没给可用对象
+				channel.probeError = "no_promise_at_call";
+				settle({ ok: false, error: "http_no_promise" });
+			} catch (e) {
+				channel.mode = "panel";                 // 直连真抛了，退回面板通道
+				channel.probeError = "call_threw:" + e;
+				settle({ ok: false, error: "http_threw" });
+			}
+		},
+
+		// 按探测到的签名形态发请求（每种形态的回调被触发过才走这里）
+		callWithCallback: function (shape, url, job, settle, parse) {
+			var timeout = (job.timeout || REQUEST_TIMEOUT) * 1000;
+			var cb = function (a, b) {
+				var cand = (typeof a === "string") ? a : (typeof b === "string" ? b : a);
+				settle(parse(cand));
+			};
+			try {
+				if (shape === "cb2") $.AsyncWebRequest(url, cb);
+				else if (shape === "optcb") $.AsyncWebRequest(url, { type: "GET", timeout: timeout }, cb);
+				else if (shape === "inner") {
+					$.AsyncWebRequest(url, { type: "GET", timeout: timeout,
+						success: cb, onload: cb, callback: cb });
+				} else if (shape === "obj") {
+					$.AsyncWebRequest({ url: url, type: "GET", timeout: timeout }, cb);
+				} else {
+					settle({ ok: false, error: "cb_shape_unknown" });
+				}
+			} catch (e) {
+				settle({ ok: false, error: "cb_threw:" + e });
+			}
+		},
+
+		// ---- 通道 2：HTML 面板 + document.title（兜底）----
+		sendViaPanel: function (job, panel) {
+			// 早期版本在这里有一道"面板没显示就不导航"的闸门：出发点是想避免把面板
+			// 弄成死面板，但它会把任务无限推回队首 -> 整个传输层卡死（游戏里表现为
+			// 状态行永远停在"读取设置…"）。那是个基于猜测的优化，撤掉：直接导航，
+			// 失败就按超时处理，至少不会卡住队列。
+			this.seq += 1;
+			var id = "d" + this.seq;
+			var body = job.payload ? JSON.stringify(job.payload) : "";
+			// 把我们的超时也告诉页面：页面自己默认 8 秒就放弃，而冷启动的一次
+			// 翻译可能就要 6-8 秒（游戏占着 GPU 时更久），回执会变成 bridge_timeout
+			var ms = Math.min(Math.round((job.timeout || REQUEST_TIMEOUT) * 1000), 120000);
+			var url = BRIDGE_BASE + "/bridge?id=" + id + "&op=" + job.op
+				+ "&timeoutMs=" + ms + "&d=" + enc(body) + "&_=" + this.seq;
+			var timeout = this.firstDone ? job.timeout : Math.max(job.timeout, FIRST_TIMEOUT);
+			job.id = id;
+			job.deadline = nowSeconds() + timeout;
+			job.panelMode = true;
+			this.inflight = job;
+			channel.navCount += 1;
+
+			// 导航：SetURL 优先，然后确认面板真的收下了地址（回读 src / url）。
+			// 收不下就换别的写法试，并把结果记进诊断码，省得来回猜。
+			var accepted = false;
+			try {
+				if (typeof panel.SetURL === "function") { panel.SetURL(url); accepted = true; }
+			} catch (e) { channel.probeError = "seturl_threw:" + e; }
+			try {
+				if (!accepted && panel.url !== undefined) { panel.url = url; accepted = true; }
+			} catch (e) {}
+			try {
+				if (!accepted && typeof panel.SetAttributeString === "function") {
+					panel.SetAttributeString("src", url);
+					accepted = true;
+				}
+			} catch (e) {}
+
+			var readBack = "";
+			try {
+				if (typeof panel.GetAttributeString === "function") {
+					readBack = String(panel.GetAttributeString("src", "") || "");
+				}
+			} catch (e) {}
+			if (!readBack) { try { readBack = String(panel.url || ""); } catch (e) {} }
+			channel.srcAccepted = (readBack.indexOf("/bridge?") !== -1) ? 1 : 0;
+
+			if (!accepted) {
+				this.inflight = null;
+				this.applyResult(job, { ok: false, error: "seturl_failed:no_method" });
+				return;
+			}
+			var self = this;
+			try { $.Schedule(TITLE_POLL_SECONDS, function () { self.poll(); }); } catch (e) {}
+		},
+
+		poll: function () {
+			var cur = this.inflight;
+			if (!cur || !cur.panelMode) return;
+			var title = this.readTitle();
+			channel.titleKind = title ? "s" : "n";
+			if (title) {
+				if (title.indexOf("lct-alive") === 0) channel.pageAlive = true;
+				var prefix = TITLE_PREFIX + cur.id;
+				var at = title.indexOf(prefix);
+				if (at !== -1) {
+					var data = parseLoose(title.substring(at + prefix.length));
+					this.inflight = null;
+					this.applyResult(cur, data || { ok: false, error: "bad_json" });
+					return;
+				}
+			}
+			if (nowSeconds() > cur.deadline) {
+				this.inflight = null;
+				// 整个请求周期里连存活标记都没见过 -> 面板导航等于没生效
+				if (!channel.pageAlive) {
+					channel.panelDead = true;
+					// 别继续抱着这个面板对象：换个引用再试（实测有"死面板"这回事）
+					this.panel = null;
+				}
+				this.applyResult(cur, {
+					ok: false,
+					error: channel.pageAlive ? "timeout_no_response" : "timeout_no_page"
+				});
+				return;
+			}
+			var self = this;
+			try { $.Schedule(TITLE_POLL_SECONDS, function () { self.poll(); }); } catch (e) {}
+		},
+
+		// 统一的收尾：更新桥状态 + 回调 + 跑下一个
+		applyResult: function (job, result) {
+			this.firstDone = true;
+			var err = String((result && result.error) || "");
+			if (result && result.ok) {
+				this.consecutiveFailures = 0;
+				this.bridgeUp = true;
+			} else if (job.op === "health" || /timeout|seturl|no_bridge_panel|http_failed|http_threw/.test(err)) {
+				this.consecutiveFailures += 1;
+			}
+			if (this.consecutiveFailures >= 2) this.bridgeUp = false;
+			// 每次响应都可能带着渲染提示（显示方式/开关/触发键），跟着走就不用重装 mod
+			if (result && typeof result === "object") {
+				if (result.displayMode) channel.hints.displayMode = result.displayMode;
+				if (result.outgoingMode) channel.hints.outgoingMode = result.outgoingMode;
+				if (typeof result.showOriginal === "boolean") {
+					channel.hints.showOriginal = result.showOriginal;
+				}
+				if (typeof result.receiveEnabled === "boolean") {
+					channel.hints.receiveEnabled = result.receiveEnabled;
+				}
+				if (typeof result.sendEnabled === "boolean") {
+					channel.hints.sendEnabled = result.sendEnabled;
+				}
+				if (result.trigger) channel.hints.trigger = result.trigger;
+				if (typeof result.separator === "string" && result.separator) {
+					channel.hints.separator = result.separator;
+				}
+			}
+			updateDot();
+			if (job.cb) {
+				// 回调里出错不能把整条队列带走：之前这里裸调，回调一抛异常
+				// pump 就再也不会被排上，后面所有翻译全部静默停摆。
+				try { job.cb(result); }
+				catch (e) {
+					try { $.Msg("[dlchat] callback failed: " + e + "\n"); } catch (e2) {}
+					log("callback_failed:" + job.op, { error: String(e) });
+				}
+			}
+			var self = this;
+			try { $.Schedule(0.01, function () { self.pump(); }); } catch (e) {}
+		}
+	};
+
+	function log(msg, extra) {
+		bus.log({ msg: String(msg), mod: MOD_TAG, extra: extra || null });
+	}
+
+	// 宽松解析：标题通道有长度上限，响应可能被截断。
+	// 截断时 JSON.parse 会失败，但"操作到底成没成"往往能从 `"ok":true` 看出来 ——
+	// 这种情况返回 {ok:true, partial:true}，让界面提示"已生效（回执不完整）"，
+	// 而不是把一次成功的保存报成失败。根治办法仍是不发大包（桥侧已改成小回执）。
+	function parseLoose(text) {
+		var body = String(text || "").replace(/^\s+|\s+$/g, "");
+		if (body.charAt(0) !== "{") {
+			var start = body.indexOf("{");
+			if (start === -1) return null;
+			body = body.substring(start);
+		}
+		try { return JSON.parse(body); } catch (e) {}
+		// 退一步：按最后一个 } 截断再试
+		var cut = body.lastIndexOf("}");
+		if (cut > 0) {
+			try { return JSON.parse(body.substring(0, cut + 1)); } catch (e) {}
+		}
+		if (/"ok"\s*:\s*true/.test(body)) return { ok: true, partial: true };
+		if (/"ok"\s*:\s*false/.test(body)) return { ok: false, partial: true, error: "partial_error" };
+		return null;
+	}
+
+	// ---------------------------------------------------------------- 状态提示
+	// 状态提示只显示在一个地方（聊天输入框上方），而且尽量短：对局里视野宝贵。
+	var status = {
+		label: null,
+		hideAt: 0,
+
+		el: function () {
+			if (isValid(this.label)) return this.label;
+			var root = null;
+			try { root = $.GetContextPanel(); } catch (e) { return null; }
+			var found = null;
+			try { found = root.FindChildTraverse("DLChatStatus"); } catch (e) {}
+			if (found) this.label = found;
+			return found;
+		},
+
+		show: function (text, seconds) {
+			var el = this.el();
+			if (!el) return;
+			writeText(el, text);
+			try { el.visible = true; } catch (e) {}
+			this.hideAt = nowSeconds() + (seconds || STATUS_HOLD_SECONDS);
+		},
+
+		tick: function () {
+			if (!this.hideAt || nowSeconds() < this.hideAt) return;
+			this.hideAt = 0;
+			var el = this.el();
+			if (el) { try { el.visible = false; } catch (e) {} }
+		}
+	};
+
+	// ---------------------------------------------------------------- 失败留痕
+	var lastFailure = { text: "", at: 0 };
+
+	function failureReason(res, fallback) {
+		if (res && res.error) return String(res.error);
+		if (!res) return "桥没响应（超时）";
+		return fallback || "未知原因";
+	}
+
+	function noteFailure(direction, res, source) {
+		var why = failureReason(res);
+		lastFailure = { text: direction + " 失败：" + why, at: nowSeconds() };
+		// 状态行给人话，但**不再砍成 24 个字符**：桥返回的中文说明里
+		// "去哪配 Key"这种关键信息正好在尾巴上（短错误码仍然缩写）。
+		status.show(shortError(why), 8);
+		log("failed:" + direction + ":" + String(source || "").substring(0, 60),
+			{ error: why });
+		ui.renderFailure();
+	}
+
+	function clearFailure() {
+		if (!lastFailure.text) return;
+		lastFailure = { text: "", at: 0 };
+		ui.renderFailure();
+	}
+
+	// ---------------------------------------------------------------- 自己发出去的消息
+	// 我们把手打的中文换成英文再发出去，这条英文消息会像别人的消息一样回流到聊天区。
+	//
+	// 判据分两层，**第一层才是主判据**：
+	//   ①（主）引擎给的标记：行里有 `SenderLocalClient` 面板，或行自带 `IsSelf` 类。
+	//      原版布局的 snippet `ChatMessageSender_LocalClient` 就是这个，引擎渲染
+	//      本地玩家的消息时会把这块塞进行里。**不依赖我们记得什么，格式怎么变都不失效。**
+	//   ②（兜底）我们自己刚发出去的内容。要记**两种形式**：翻译前的原文 + 写进输入框的
+	//      最终文本 —— 因为游戏渲染出来的未必和输入框里那串一模一样（前缀/截断/换行），
+	//      只比对最终文本的话，一比就漏，表现就是"自己发的英文被翻回来了"。
+	var sent = [];
+
+	function rememberSent(original, finalText) {
+		var now = nowSeconds();
+		var forms = [];
+		if (original) forms.push(String(original));
+		if (finalText) forms.push(String(finalText));
+		if (!forms.length) return;
+		sent.push({ forms: forms, t: now });
+		if (sent.length > 20) sent.shift();
+	}
+
+	function isOwnMessageByText(text) {
+		var t = nowSeconds();
+		var want = String(text || "").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+		if (!want) return false;
+		for (var i = sent.length - 1; i >= 0; i--) {
+			if (t - sent[i].t > SENT_MEMORY_SECONDS) continue;
+			for (var j = 0; j < sent[i].forms.length; j++) {
+				if (sent[i].forms[j] === want) return true;
+			}
+		}
+		return false;
+	}
+
+	// 引擎标记：这一行是不是"我发的"
+	function isOwnRow(row) {
+		if (!isValid(row)) return false;
+		if (hasClass(row, "IsSelf")) return true;
+		// class 而不是 id：原版 snippet 写的是 <Panel class="SenderLocalClient" />
+		if (findByClass(row, "SenderLocalClient")) return true;
+		var byId = null;
+		try { byId = row.FindChildTraverse("SenderLocalClient"); } catch (e) {}
+		return isValid(byId);
+	}
+
+	// 游戏自带的快捷语 / Ping：**游戏自己已经本地化过了**（原版 snippet
+	// `ChatMessageContents_Ping` → `PingLabel`），我们再翻一遍就会出现
+	// 「敌人消失！」被当成外文再翻一次的怪现象。
+	function isQuickChatRow(row, contents) {
+		if (isValid(contents)) {
+			if (hasClass(contents, "Ping")) return true;
+			var ping = null;
+			try { ping = contents.FindChildTraverse("PingLabel"); } catch (e) {}
+			if (isValid(ping)) return true;
+		}
+		if (!isValid(row)) return false;
+		if (hasClass(row, "Ping")) return true;
+		var any = null;
+		try { any = row.FindChildTraverse("PingLabel"); } catch (e) {}
+		return isValid(any);
+	}
+
+	// ---------------------------------------------------------------- 读一行聊天
+	// 游戏里有**三个**能出现聊天的地方，结构各不相同。挨个判断，绝不用"猜第一个有字的
+	// 标签"这种兜底 —— 那个兜底会拿到发送者名字，等于把玩家名当消息翻。
+	//
+	//   ① 左下角聊天窗（按回车打开的）：ChatMessages > ChatMessage(类)
+	//        正文在 MessageContents 子树里收集；发送者在 MessageSource 里
+	//   ② 对局头顶气泡：Team1Chat/Team2Chat > Messages > ChatMessage(类) + ChatBubble(类)
+	//        正文在气泡里的 MessageText（这个 id 只在气泡里存在）
+	//   ③ 大厅/展开聊天：ChatLinesPanel > ChatLineContainer(类)
+	//        正文在 ChatLine(类) 那一支
+	//
+	// 返回 null = 这一行不用管（读不到字、或是不该翻的）。
+	function readMessageRow(row, surface) {
+		if (!isValid(row)) return null;
+		var contents = null;
+		var text = "";
+		var sender = "";
+		var textLabel = null;
+
+		if (surface === "lobby" || hasClass(row, "ChatLineContainer")) {
+			// ③ 大厅行
+			var line = findByClass(row, "ChatLine");
+			text = collectText(line) || collectText(row);
+			var persona = findByClass(row, "ChatPersona");
+			sender = readText(persona);
+			surface = "lobby";
+		} else if (surface === "bubble" || hasClass(row, "ChatBubble")
+			|| findByClass(row, "ChatBubble")) {
+			// ② 头顶气泡行：没有 MessageSource，发送者拿不到。
+			//
+			// 官方布局（build_mod\vanilla\panorama\layout\citadel_hud_top_bar_chat.xml）：
+			//   ChatMessage > #MessageContents > .ChatBubble > .TextContainer > Label#MessageText
+			// 官方样式（citadel_hud_top_bar_chat.vcss_c）里明确写着：
+			//   .ChatMessage #MessageContents { flow-children: down; }
+			//   .ChatMessage .ChatBubble .TextContainer { min-height: 24px; max-width: 240px; ... }
+			// 所以译文挂在 **#MessageContents** 上最稳：它是纵向流，译文天然排在气泡正下方，
+			// 而且不会挤进 .TextContainer 里跟 .bubble_bg（width/height:100%）抢位置。
+			var bubble = findByClass(row, "ChatBubble") || row;
+			var textLabel = null;
+			try { textLabel = bubble.FindChildTraverse("MessageText"); } catch (e) {}
+			var box = null;
+			try { box = row.FindChildTraverse("MessageContents"); } catch (e) {}
+			contents = box || bubble;
+			text = readText(textLabel) || collectText(bubble);
+			surface = "bubble";
+		} else {
+			// ① 聊天窗行
+			var source = null;
+			try { source = row.FindChildTraverse("MessageSource"); } catch (e) {}
+			try { contents = row.FindChildTraverse("MessageContents"); } catch (e) {}
+			// 正文：从 MessageContents 整棵子树收集（正文 Label 没有 id，不能按 id 找）
+			text = collectText(contents);
+			if (!text) text = collectText(row);
+			var senderLabel = findByClass(source, "SenderName")
+				|| findByClass(row, "SenderName");
+			sender = readText(senderLabel);
+			surface = "chat";
+		}
+
+		text = String(text || "").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+		if (!text) return null;
+		return {
+			text: text,
+			sender: sender || "",
+			surface: surface,
+			contents: contents,
+			textLabel: isLabel(textLabel) ? textLabel : null,
+			own: isOwnRow(row),
+			quick: isQuickChatRow(row, contents)
+		};
+	}
+
+	// 一行要不要翻：所有"不翻"的理由集中在这里，方便一眼复核。
+	// 顺序有意为之：**先判身份（谁发的/是不是游戏快捷语），再判长度** ——
+	// 否则一条很短的自有消息会被记成"too_short"，看着像"长度拦住的"，
+	// 实际是身份判断没跑到（排查时会带偏）。
+	function shouldSkipRow(info) {
+		if (!info || !info.text) return "empty";
+		if (info.quick) return "quick_chat";           // 游戏已本地化，翻了就是重复翻
+		if (info.own) return "own_message";            // 我发的，别翻回来
+		if (isOwnMessageByText(info.text)) return "own_text";
+		if (info.text.charAt(0) === "/") return "command";
+		if (info.text.replace(/\s/g, "").length < 2) return "too_short";
+		if (!looksEnglish(info.text)) return "not_english";
+		if (channel.hints.receiveEnabled === false) return "receive_disabled";
+		return "";
+	}
+
+	// ---------------------------------------------------------------- 聊天行翻译
+	var rows = [];          // 见 handleRow 里的字段说明
+	var origSeq = 0;        // 给"原文标签"起唯一 id
+	// 每个界面各自记住"上次扫到第几行"（增量扫描）
+	var scanState = { chat: { count: 0 }, bubble: { count: 0 }, lobby: { count: 0 } };
+	// 末尾这几行每轮都重新看一眼：游戏会回收复用行面板，行数不变但内容换了
+	// （只靠"上次扫到第几行"永远轮不到它们）。取 4 是因为屏幕上的聊天区也就同时显示
+	// 几条，末 4 条足够覆盖"刚被复用、正要翻"的行，代价只是每轮多读几行文字。
+	var RECHECK_TAIL = 4;
+
+	function rowRecord(row) {
+		for (var i = 0; i < rows.length; i++) if (rows[i].panel === row) return rows[i];
+		return null;
+	}
+
+	// 只清理"属于这个容器、但已经从容器里消失"的行。
+	//
+	// ⚠ 必须按容器过滤：rows 是三个界面共用的。如果拿 A 界面的子面板去比对，
+	// B 界面的行会被当成"已消失"清掉 —— 表现是"扫完气泡，聊天窗的记录全丢了"，
+	// 于是每 250ms 重新翻一遍（离线测试台抓到过这个）。
+	function pruneRows(live, surface) {
+		var kept = [];
+		for (var i = 0; i < rows.length; i++) {
+			var r = rows[i];
+			if (surface && r.surface !== surface) { kept.push(r); continue; }
+			if (!isValid(r.panel)) continue;
+			var stillThere = false;
+			for (var j = 0; j < live.length; j++) if (live[j] === r.panel) { stillThere = true; break; }
+			if (stillThere) kept.push(r);
+		}
+		rows = kept;
+	}
+
+	// 译文往哪儿贴：
+	//   聊天窗（双语）—— **拼进正文那一格**（"英文 | 中文"），见 applyChatInlineTranslation
+	//   气泡（双语）  —— 在"正文容器"下面另起一行（#MessageContents 是纵向流）
+	//   替换模式      —— 直接把正文那段文字换掉，原文塞进一个默认收起、悬停才显示的标签
+	function translationHost(rec) {
+		var host = rec.contents;
+		if (isValid(host)) return host;
+		if (isValid(rec.panel)) return rec.panel;
+		return null;
+	}
+
+	function applyTranslation(rec, chinese) {
+		var host = translationHost(rec);
+		if (!isValid(host)) return;
+		// 让宿主容器"向下排"。译文是追加的子元素，容器不纵向排的话它会被排到
+		// 右边、或者叠在原文上。官方样式里气泡的 #MessageContents 和聊天窗的
+		// MessageBody 本来就都是 down，这里只是保证万一不是也排得对。
+		try { host.style.flowChildren = "down"; } catch (e) {}
+		var bilingual = displayMode() === "bilingual";
+
+		if (bilingual) {
+			// 聊天窗走"行内拼接"（正文 + 分隔符 + 译文，和输入框/发出去的消息同一个写法），
+			// 它有自己的挂载逻辑和一条硬约束，见 applyChatInlineTranslation。
+			if (rec.surface === "chat") {
+				if (applyChatInlineTranslation(rec, host, chinese)) return;
+				// 找不到可改写的正文 Label 时往下走，退回"独立标签"那条老路（至少不丢内容）
+			}
+			// 气泡（头顶）与兜底：译文标签挂在正文容器下面
+			// （容器已改成纵向流，所以译文稳定出现在正文下方）
+			if (!isValid(rec.trans) || !sameHost(rec.trans, host)) {
+				try {
+					rec.trans = $.CreatePanel("Label", host, "DLChatTrans" + (++origSeq));
+					if (rec.trans) setClass(rec.trans, "DLChatTranslation", true);
+				} catch (e) {}
+			}
+			if (isValid(rec.trans)) {
+				writeText(rec.trans, chinese);
+				// 气泡行额外写一遍内联样式：官方 HUD 顶栏那套样式的作用域不一定覆盖到
+				// 我们注入的标签（BabelTower 就在这里踩过：套了类也取不到底色，
+				// 退化成"透明底浅色字"看不见）。内联样式优先级最高，绕开作用域问题。
+				if (rec.surface === "bubble") applyBubbleInlineStyle(rec.trans);
+			}
+			if (isValid(rec.panel)) setClass(rec.panel, "DLChatBilingual", true);
+			rec.chinese = chinese;
+			rec.applied = true;
+			if (!rec.logged) { rec.logged = true; logRowStructure(rec.surface, host, rec); }
+			return;
+		}
+
+		// 替换模式：把正文那段文字改写掉
+		var target = rec.textLabel;
+		if (!isValid(target)) target = findTextLabel(host);
+		if (!isValid(target)) return;                   // 找不到可改写的节点就不动（宁可不动，也别乱写）
+		if (!isValid(rec.orig)) {
+			try {
+				rec.orig = $.CreatePanel("Label", host, "DLChatOrig" + (++origSeq));
+				if (rec.orig) setClass(rec.orig, "DLChatOriginal", true);
+			} catch (e) {}
+		}
+		if (isValid(rec.orig)) writeText(rec.orig, rec.original);
+		writeText(target, chinese);
+		setClass(target, "DLChatTranslatedText", true);
+		// 刚从"双语行内"切过来的行：正文里还留着 "英文 | 中文"，要还原成纯英文再改写，
+		// 否则悬停看到的是中英混排。
+		clearChatInline(rec);
+		rec.textLabel = target;
+		rec.chinese = chinese;
+		rec.applied = true;
+		if (isValid(rec.panel)) setClass(rec.panel, "DLChatTranslated", true);
+		if (!rec.logged) { rec.logged = true; logRowStructure(rec.surface, host, rec); }
+	}
+
+	// 正文那一格到底是哪个面板。
+	//
+	// ⚠ 不能像 findTextLabel 那样"找子树里唯一有字的 Label"就完事：第二次给同一行写译文时，
+	// 那一格已经有字了，而 findTextLabel 从宿主（#MessageContents）往下走，会越过正文格、
+	// 直接把**宿主自己**（甚至更外层的行容器）当成目标 —— 结果是把 "英文 | 中文" 写进
+	// #ChatMessages，整行文字被反复拼接（离线测试台抓到过这个）。
+	// 官方结构是 #MessageContents > Panel.Text > Label，所以按这个形状精确取；取不到再退回旧办法。
+	function findChatTextCell(host) {
+		// 游戏原版 snippet（chat.vxml_c，见 build_mod/vanilla/panorama/layout/chat.xml:15）是：
+		//     <snippet name="ChatMessageContents_Text"><Panel class="Text"><Label text="{s:message_text}" /></Panel></snippet>
+		// **Text 是 class，不是 id** —— 一开始按 id 找（childById）在真机上永远匹配不到，
+		// 于是一路退到"子树里唯一有字的 Label"那条老路，多一个标签就找不着（离线测试台抓到过）。
+		var text = findByClass(host, "Text");
+		if (isValid(text)) {
+			var kids = childrenOf(text);
+			for (var i = 0; i < kids.length; i++) {
+				if (isLabel(kids[i])) return kids[i];
+			}
+		}
+		var byId = childById(host, "Text");            // 有的版本可能给了 id，顺手兜一层
+		if (isValid(byId)) {
+			var kids2 = childrenOf(byId);
+			for (var j = 0; j < kids2.length; j++) {
+				if (isLabel(kids2[j])) return kids2[j];
+			}
+		}
+		for (var d = 0; d < 4 && isValid(host); d++) {
+			var lbl = findTextLabel(host);
+			if (isValid(lbl)) return lbl;
+			try { host = host.GetParent(); } catch (e) { break; }
+		}
+		return null;
+	}
+
+	// 聊天窗双语：把中文**拼进正文那一格**，而不是另起一个标签挂在下面。
+	//
+	// 为什么要改成这样（这是本次修复的核心）：
+	//   ① 独立标签只能排在气泡**下面**。而聊天区是写死的 height: 200px + overflow: squish scroll，
+	//      最新一条又恰好贴在容器边界上，输入框那一行（#ChatControls，background-color: #000e，
+	//      只是 opacity: 0 并不收起）又是**后画的兄弟节点** —— 于是最新一条的"下方"同时被
+	//      裁切和遮挡，译文建出来了却看不见（mod.log 里那条 kids=2 就是证据）。
+	//   ② 拼进正文那一格，文字就在游戏自己的白气泡内部：气泡本来就会跟着文字长高、换行，
+	//      没有"多出来的那块空间"可以被裁；而且和输入框里 "中文 | 英文" 的写法完全一致。
+	//
+	// 代价（已知并接受）：消息会高一截，聊天区能同时显示的行数变少。
+	function applyChatInlineTranslation(rec, host, chinese) {
+		var target = rec.textLabel;
+		if (!isValid(target)) target = findChatTextCell(host);
+		if (!isValid(target)) return false;             // 找不到就交给调用方走兜底
+		var sep = separatorText() || " | ";
+
+		if (!isValid(rec.orig)) {
+			try {
+				rec.orig = $.CreatePanel("Label", host, "DLChatOrig" + (++origSeq));
+				if (rec.orig) setClass(rec.orig, "DLChatOriginal", true);
+			} catch (e) {}
+		}
+		if (isValid(rec.orig)) {
+			writeText(rec.orig, rec.original);
+			// 双语行内模式下原文就在眼前，悬停那份不显示（CSS 按这个类收掉）；
+			// 换成"替换原文"时会把类摘掉，它自己回来。
+			setClass(rec.orig, "DLChatOriginalHidden", true);
+		}
+		// 写之前先把这一格"原本的文字"记下来：行内拼接后它就不是原文了，
+		// 而下一轮扫描读到的必须是原文（否则中文会被当成下一条消息的原话）。
+		var before = readText(target);
+		var finalText = rec.original + sep + chinese;
+		writeText(target, finalText);
+		setClass(target, "DLChatTranslatedText", true);
+		inlineRemember(target, {
+			original: before || rec.original,
+			finalText: finalText,
+			cell: target
+		});
+		if (isValid(rec.panel)) {
+			setClass(rec.panel, "DLChatChatInline", true);
+			setClass(rec.panel, "DLChatBilingual", false);   // 不再用"独立标签"那套样式
+			// 行容器也记一份"整行正文"：这样别处从 MessageContents 那一层收集文字时，
+			// 拿到的是干净的英文原文，而不是再拼一遍 "英文 | 中文"。
+			inlineRemember(rec.panel, {
+				original: rec.original,
+				finalText: finalText,
+				cell: target,
+				collected: rec.original
+			});
+		}
+		rec.textLabel = target;
+		rec.trans = target;      // "译文落在哪儿"的答案：就是正文那一格（自检/日志读它）
+		rec.chinese = chinese;
+		rec.applied = true;
+		keepChatPinned(rec.panel);
+		if (!rec.logged) { rec.logged = true; logRowStructure(rec.surface, host, rec); }
+		return true;
+	}
+
+	// 把一行从"双语行内"状态里退出来：摘掉类、丢掉记录。
+	// ⚠ **不要**把正文写回 rec.original：这行此刻往往已经被游戏填进了新消息，
+	// 写回去就是把新消息吃掉（离线测试台抓过这个 bug）。正文的还原只在"替换原文"
+	// 那条路上做，而那条路会自己写目标格。
+	function clearChatInline(rec) {
+		if (!rec || !hasClass(rec.panel, "DLChatChatInline")) return;
+		setClass(rec.panel, "DLChatChatInline", false);
+		inlineForget(rec.panel);
+		if (isValid(rec.textLabel)) inlineForget(rec.textLabel);
+		if (isValid(rec.orig)) {
+			setClass(rec.orig, "DLChatOriginalHidden", false);
+			// 这一行已经被游戏填进新消息了：挂在行上的"悬停原文"必须跟着换成新原文，
+			// 否则它留着的还是上一条，切到"替换原文"或悬停时看到的就是旧消息。
+			writeText(rec.orig, rec.original || "");
+		}
+	}
+
+	// 把聊天区重新钉回"最新那一端"。
+	// 引擎不会因为新增内容而自动滚动（CS2 自己的 chat.js 也是每次追加后显式调一次）；
+	// 而 #ChatMessages 是 scaleY(-1) 翻转过的，所以 ScrollToBottom() 在翻转空间里
+	// 对应的是**视觉上的顶端 = 最新消息那一端**，正是我们要的。
+	function keepChatPinned(row) {
+		if (hasClass(row, "ChatMessage")) return;       // 有行上下文时只处理聊天行
+		var root = null;
+		try { root = $.GetContextPanel(); } catch (e) { return; }
+		var box = view("ChatMessages", root);
+		if (!isValid(box) || box === root) return;
+		call0(box, "ScrollToBottom");
+	}
+
+	// 我们创建的那个译文标签是不是还挂在同一个宿主下（聊天行会回收复用）
+	function sameHost(label, host) {
+		try { return label.GetParent() === host; } catch (e) { return true; }
+	}
+
+	// 气泡译文的内联样式兜底。
+	// 为什么非要有这一手：官方 HUD 顶栏那套样式（citadel_hud_top_bar_chat.vcss_c）
+	// 用的是 `.ChatMessage .ChatBubble .TextContainer #MessageText` 这种**长选择器**，
+	// 我们注入的标签不在那条链上，套自己类名又可能受作用域影响 -> 结果就是
+	// "标签建出来了、也有文字，但是透明底 + 浅色字，等于看不见"。
+	// 内联样式优先级最高，与作用域无关，所以气泡这一路直接写死。
+	function applyBubbleInlineStyle(label) {
+		if (!isValid(label)) return;
+		var s = null;
+		try { s = label.style; } catch (e) { return; }
+		if (!s) return;
+		try {
+			s.backgroundColor = "rgba(20, 52, 96, 0.95)";
+			s.color = "#ffffff";
+			s.fontSize = "15px";
+			s.fontStyle = "normal";
+			s.fontWeight = "600";
+			s.border = "1px solid rgba(120, 180, 255, 0.55)";
+			s.borderRadius = "4px";
+			s.padding = "3px 8px";
+			s.marginTop = "3px";
+			s.marginLeft = "20px";
+			s.maxWidth = "220px";
+			s.whiteSpace = "normal";
+			s.width = "fit-children";
+			s.height = "fit-children";
+			s.textShadow = "0px 1px 2px rgba(0, 0, 0, 0.6)";
+		} catch (e) {}
+	}
+
+	// 在正文容器里找"该被改写的那段文字"：只有一格非空 Label 时才敢用。
+	// 多于一格就分不清哪格是正文（比如气泡里还带发送者），宁可不动。
+	function findTextLabel(host) {
+		var found = [];
+		(function walk(p, depth) {
+			if (!isValid(p) || depth > 6) return;
+			if (isLabel(p) && readText(p).replace(/\s/g, "").length) found.push(p);
+			var kids = childrenOf(p);
+			for (var i = 0; i < kids.length; i++) walk(kids[i], depth + 1);
+		})(host, 0);
+		return found.length === 1 ? found[0] : null;
+	}
+
+	// 处理一行。rec 的字段：
+	//   panel    游戏给的行面板（回收复用的单位）
+	//   contents 正文容器（译文往这下面贴）
+	//   original 原文（用来判断"这个面板是不是换了内容"）
+	//   applied  已经翻好了  pending 正在翻  retry 欠几次重试
+	function handleRow(row, surface) {
+		var info = readMessageRow(row, surface);
+		var rec = rowRecord(row);
+
+		if (rec) {
+			if (rec.pending) return;                     // 正在等译文，别重复发
+			if (!info) { rec.applied = false; return; }   // 这一行暂时读不到字
+			if (rec.applied && !rec.retry
+				&& info.text === rec.original) return;    // 翻过了、内容没变
+			if (info.text !== rec.original || info.own) {
+				// 面板被回收拿去显示别的消息了（聊天行会复用）：当新行重来
+				clearChatInline(rec);                    // 上一轮的 "英文 | 中文" / 悬停原文要清掉
+				rec.original = info.text;
+				rec.contents = info.contents;
+				rec.textLabel = info.textLabel || null;
+				rec.own = info.own;
+				rec.quick = info.quick;
+				rec.surface = surface;
+				rec.applied = false;
+				rec.chinese = "";
+				rec.retry = 0;
+				rec.logged = false;
+			}
+		} else {
+			rec = {
+				panel: row, contents: info.contents, textLabel: info.textLabel || null,
+				original: info.text, own: info.own, quick: info.quick,
+				surface: surface,
+				chinese: "", orig: null, trans: null, logged: false,
+				applied: false, pending: false, retry: 0
+			};
+			rows.push(rec);
+		}
+
+		var why = shouldSkipRow(info);
+		if (why) {
+			// 记成"已处理"，免得每 250ms 重新判断同一行
+			rec.applied = true;
+			rec.chinese = info.text;
+			rec.skipped = why;
+			return;
+		}
+		rec.skipped = "";
+		rec.retry = 0;
+		translateRowText(rec, info.text);
+	}
+
+	// ---- 同一句话只翻一次 ----------------------------------------------------
+	// 为什么需要：同一句 "b b b" 在聊天区出现两行就发两次请求。桥那边有缓存，
+	// 但**队列是串行的**，第二次照样占一个槽位（本机 100~200ms，云端 300~600ms），
+	// 排队时就是白等。这里在客户端记一份"翻过的"，命中直接用。
+	var CACHE_MAX = 64;
+	var cacheMap = {};       // text -> 译文
+	var cacheOrder = [];     // 最近使用的 text（末尾最新），满了淘汰最老的
+
+	function cacheGet(text) {
+		var hit = cacheMap[text];
+		if (typeof hit !== "string") return null;
+		var at = cacheOrder.indexOf(text);
+		if (at !== -1) { cacheOrder.splice(at, 1); cacheOrder.push(text); }
+		return hit;
+	}
+
+	function cachePut(text, chinese) {
+		if (!text || !chinese) return;
+		if (typeof cacheMap[text] !== "string") cacheOrder.push(text);
+		cacheMap[text] = chinese;
+		while (cacheOrder.length > CACHE_MAX) {
+			var old = cacheOrder.shift();
+			delete cacheMap[old];
+		}
+	}
+
+	function cacheForget(text) {
+		delete cacheMap[text];
+		var at = cacheOrder.indexOf(text);
+		if (at !== -1) cacheOrder.splice(at, 1);
+	}
+
+	// 同一个句子正在翻的时候，后面来的相同句子挂到同一批等待者上（single-flight）：
+	// 既不多发请求，也不会漏掉任何一行的显示。
+	var pendingByText = {};
+
+	function translateRowText(rec, text) {
+		rec.pending = true;
+		rec.retry = 0;
+		var cached = cacheGet(text);
+		if (cached !== null) {
+			rec.pending = false;
+			applyTranslation(rec, cached);
+			return;
+		}
+		var waiters = pendingByText[text];
+		if (waiters) { waiters.push(rec); return; }   // 同一句正在翻：挂上去，不再发请求
+
+		waiters = pendingByText[text] = [rec];
+		rec.queuedNow = true;      // 给离线测试台数"这一轮真的发了几条请求"
+		bus.send("translate", {
+			text: text, sourceLanguage: "en", targetLanguage: "zh-Hans"
+		}, REQUEST_TIMEOUT, function (res) {
+			var list = pendingByText[text] || [];
+			delete pendingByText[text];
+			var out = (res && res.ok && res.translation) ? res.translation : "";
+			for (var i = 0; i < list.length; i++) {
+				var one = list[i];
+				one.pending = false;
+				if (out) {
+					applyTranslation(one, out);
+				} else if (isValid(one.panel)) {
+					// 没翻出来：标成"欠一次重试"，下一次扫描会再试（有次数上限）
+					one.applied = false;
+					one.retry = 1;
+				}
+			}
+			if (out) {
+				cachePut(text, out);
+				clearFailure();
+				log("in:" + text + " => " + out, { viaCache: !!res.viaCache });
+				// 同一个游戏面板可能已经换了内容，新内容按"新行"再走一遍
+				for (var k = 0; k < list.length; k++) markRowDirty(list[k]);
+			} else {
+				noteFailure("英→中", res, text);
+			}
+		});
+	}
+
+	// 面板被游戏回收复用后，行上的文字换了：清掉记录，下次扫描当新行处理
+	function markRowDirty(rec) {
+		if (!isValid(rec.panel) || !rec.applied) return;
+		var info = readMessageRow(rec.panel, rec.surface);
+		if (!info) return;
+		if (info.text === rec.original) return;   // 还是同一句，正常
+		rec.applied = false;
+		rec.chinese = "";
+		rec.original = info.text;
+	}
+
+	// 重译最近一条：翻错了、或者第一次失败时的补救手段（桌面版有 Alt+R，mod 之前没有）
+	function retranslateLast() {
+		for (var i = rows.length - 1; i >= 0; i--) {
+			var rec = rows[i];
+			if (!isValid(rec.panel)) continue;
+			var original = rec.original || "";
+			if (!original || !looksEnglish(original)) continue;
+			if (rec.own) continue;                     // 自己发的不重译
+			if (rec.pending) { status.show("这一条正在翻译，稍等", 4); return true; }
+			cacheForget(original);
+			rec.applied = false;
+			rec.chinese = "";
+			rec.retry = 0;
+			translateRowText(rec, original);
+			status.show("重译中：" + original.substring(0, 30), 6);
+			log("retranslate:" + original);
+			return true;
+		}
+		status.show("没有可重译的英文消息", 4);
+		return false;
+	}
+
+	// ---------------------------------------------------------------- 扫描
+	// 三个界面各扫各的，**互不短路**（一个界面有活动不能把另外两个跳过：
+	// 头顶气泡和聊天窗经常同时有消息）。每个容器记住"上次扫到第几行"，
+	// 只处理新增的 —— 省 CPU，也天然是"按到来顺序翻"。
+	//
+	// ⚠ 但"只处理新增的"不够：**游戏会回收复用聊天行**（同一块面板换一句新话）。
+	// 那种情况下行数不变、位置也不变，只靠 state.count 永远轮不到它 —— 表现就是
+	// "某一行之后，聊天窗再也不出中文了"（离线测试台用回收场景抓到过）。
+	// 所以末尾 RECHECK_TAIL 行每轮都重新看一眼：内容还是原样就什么都不做（handleRow 里有
+	// "翻过了、内容没变"的短路），真被换掉了才当成新行重译。
+	//
+	// surface: "chat"（聊天窗）/ "bubble"（头顶气泡）/ "lobby"（大厅展开聊天）
+	function scanSurface(container, surface) {
+		if (!isValid(container)) return;
+		var live = childrenOf(container);
+		pruneRows(live, surface);
+		var state = scanState[surface];
+		if (!state) state = scanState[surface] = { count: 0 };
+		// 列表变短 = 聊天被清空/重建，从头再来
+		if (live.length < state.count) state.count = 0;
+		var from = state.count;
+		// 首次（或刚重建）时只处理最后几条：历史消息没必要一次翻一大堆
+		if (from === 0 && live.length > BOOTSTRAP_TAIL) from = live.length - BOOTSTRAP_TAIL;
+		// 从旧到新处理，译文出现顺序和聊天一致
+		for (var i = from; i < live.length; i++) handleRow(live[i], surface);
+		state.count = live.length;
+		// 末尾几条可能"发送者/正文"是晚一拍才填上的，多扫一遍兜住
+		var tailFrom = Math.max(0, live.length - 2);
+		for (var j = tailFrom; j < live.length; j++) handleRow(live[j], surface);
+		// 见 changedRows 的说明：已被处理过、但可能被游戏就地改写的行，也要重新看一眼
+		recheckChangedRows(live, surface);
+	}
+
+	// 一行正文的当前文字（读不出来返回 null = 这一行现在不用管）。
+	// 用 recordFor 而不是 rowRecord：它是"行 -> 记录"的唯一入口，和 handleRow 看的是同一份数据。
+	function rowTextNow(row, surface) {
+		var info = null;
+		try { info = readMessageRow(row, surface); } catch (e) { return null; }
+		return (info && info.text) ? info.text : null;
+	}
+
+	// 已处理过的行里，挑出"正文和当时记的不一样"的重新交给 handleRow。
+	//
+	// 为什么必须有这一步：**游戏会回收复用聊天行**（同一块面板换一句新话），行数不变、
+	// 位置也不变，只靠"上次扫到第几行"永远轮不到它。早期的做法只重扫末尾两行，结果
+	// "倒数第二行被复用"就漏了（离线测试台用回收场景一步步抓出来的）。
+	// 这里改成重扫"我们真的写过译文的、最近的那几行"：只有写过的行才可能被复用改写，
+	// 数量恒定，代价与历史消息条数无关。
+	function recheckChangedRows(live, surface) {
+		var checked = 0;
+		for (var i = rows.length - 1; i >= 0 && checked < RECHECK_TAIL; i--) {
+			var rec = rows[i];
+			if (!rec || !rec.applied || rec.pending) continue;
+			if (surface && rec.surface !== surface) continue;
+			var here = false;
+			for (var k = 0; k < live.length; k++) if (live[k] === rec.panel) { here = true; break; }
+			if (!here) continue;
+			checked += 1;
+			var now = rowTextNow(rec.panel, surface);
+			if (!now || now === rec.original) continue;   // 还是同一句，正常
+			handleRow(rec.panel, surface);
+		}
+	}
+
+	function scanAllSurfaces() {
+		var root = null;
+		try { root = $.GetContextPanel(); } catch (e) { return; }
+		if (!isValid(root)) return;
+		scanSurface(view("ChatMessages", root), "chat");
+		scanSurface(bubbleContainer(root), "bubble");
+		scanSurface(view("ChatLinesPanel", root), "lobby");
+	}
+
+	// 按 id 找容器（找不到返回 null，交给下一层兜底）
+	function view(id, root) {
+		var found = null;
+		try { found = root.FindChildTraverse(id); } catch (e) {}
+		return isValid(found) ? found : null;
+	}
+
+	// 头顶气泡的容器。
+	//
+	// 官方布局（build_mod\vanilla\panorama\layout\citadel_hud_top_bar_chat.xml，反解自 pak01）是：
+	//     CitadelHudTopBarChat > Panel#Messages
+	// **没有 Team1Chat / Team2Chat** —— 那两个 id 只在别的（旧版/他人）布局里存在。
+	// 我们一开始照那个层级找，两个都不在 -> 返回 null -> 气泡行一条都没扫过
+	// （开机日志里头顶条那个界面报 `surfaces=none`，就是这个原因）。
+	// 所以顺序反过来：先看"Messages 是不是就在手边"，再退回旧层级兜底。
+	function bubbleContainer(root) {
+		if (!isValid(root)) return null;
+
+		// ① 本地图：root 自己就是 Messages，或它的直接子级里有 Messages
+		var self = null;
+		try { self = root.id || ""; } catch (e) {}
+		if (self === "Messages") return root;
+		var direct = directChildById(root, "Messages");
+		if (direct) return direct;
+
+		// ② 旧层级：Team1Chat / Team2Chat > Messages （别的游戏版本可能长这样）
+		var ids = ["Team1Chat", "Team2Chat"];
+		for (var i = 0; i < ids.length; i++) {
+			var chat = view(ids[i], root);
+			var box = chat ? view("Messages", chat) : null;
+			if (box) return box;
+		}
+
+		// ③ 再兜一层：按官方类名找实例，再看它下面有没有 Messages
+		var chats = [];
+		try {
+			if (typeof root.FindChildrenWithClassTraverse === "function") {
+				chats = root.FindChildrenWithClassTraverse("CitadelHudTopBarChat") || [];
+			}
+		} catch (e) {}
+		for (var j = 0; j < chats.length; j++) {
+			if (chats[j] === root) continue;
+			var box2 = view("Messages", chats[j]);
+			if (box2) return box2;
+		}
+
+		// ④ 最后：整棵树里第一个叫 Messages 的面板（FindChildTraverse 是深度查找）
+		return view("Messages", root);
+	}
+
+	// 只在直接子级里按 id 找一个面板（不递归）。
+	// 为什么需要它：气泡容器 Messages 是**根面板的直接子级**，
+	// 直接找比全树深搜更准，也不会误抓到别处的同名面板。
+	function directChildById(parent, id) {
+		var kids = childrenOf(parent);
+		for (var i = 0; i < kids.length; i++) {
+			var k = kids[i];
+			var kid = "";
+			try { kid = k.id || ""; } catch (e) {}
+			if (kid === id) return k;
+		}
+		return null;
+	}
+
+	// ---------------------------------------------------------------- 输入框：中文 -> 英文
+	var inputBusy = false;
+
+	// 触发键：默认三下空格；设置里可改成两下
+	function triggerString() {
+		return channel.hints.trigger === "double_space" ? "  " : TRIGGER;
+	}
+
+	// 把要说的话规整成**一行**：
+	//   · 换行 -> 空格。游戏聊天框里按 Shift+Enter 会真的换行，带着换行去翻译，
+	//     译文里就有换行，发出去变成两条消息（也顺带破坏"自己发的消息"识别）。
+	//   · 连续空白 -> 一个空格。两个空格是触发键，不能留在正文里。
+	//   · 首尾空白去掉。
+	function sanitizeBody(text) {
+		return String(text == null ? "" : text).replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+	}
+
+	// 聊天框里输入 /tongyi（或 /通译、/设置、旧的 /dlchat）也能打开面板：不依赖任何
+	// 键位绑定，检测到就把输入框清空、打开面板 —— 不会把这条命令发出去。
+	// ⚠ 只有带 / 的 ASCII 命令能 toLowerCase：中文别名要先原样比一遍（lower 对中文无害但没必要）。
+	function checkSettingsCommand(inp) {
+		var raw = readText(inp).replace(/^\s+|\s+$/g, "");
+		var lower = raw.toLowerCase();
+		if (lower === "/tongyi" || lower === "/dlchat" || lower === "/cfg"
+			|| raw === "/通译" || raw === "/设置") {
+			writeText(inp, "");
+			ui.show();
+			status.show("已打开通译设置", 3);
+			return true;
+		}
+		return false;
+	}
+
+	function scanInput() {
+		var root = null;
+		try { root = $.GetContextPanel(); } catch (e) { return; }
+		var inp = null;
+		try { inp = root.FindChildTraverse("ChatInput"); } catch (e) {}
+		if (!isValid(inp) || inputBusy) return;
+		if (checkSettingsCommand(inp)) return;
+		if (channel.hints.sendEnabled === false) return;      // 设置里关掉了中->英
+
+		var trigger = triggerString();
+		var text = readText(inp);
+		if (text.length < trigger.length + 2) return;
+		if (text.substring(text.length - trigger.length) !== trigger) return;
+
+		var body = sanitizeBody(text.substring(0, text.length - trigger.length));
+		if (!body || !looksChinese(body)) return;    // 只处理中文，纯英文原样放着
+
+		inputBusy = true;
+		status.show("翻译中…", 30);
+		var expected = text;                          // 翻译期间用户可能继续打字，回来要对比
+		// lane="fast"：玩家自己触发的，插到队首 —— 不排在屏幕上那堆聊天行后面
+		bus.send("translate", {
+			text: body, sourceLanguage: "zh", targetLanguage: "en"
+		}, REQUEST_TIMEOUT, function (res) {
+			inputBusy = false;
+			if (!(res && res.ok && res.translation)) {
+				noteFailure("中→英", res, body);
+				return;
+			}
+			if (readText(inp) !== expected) {
+				// 输入框内容在等结果的时候变了：不能覆盖玩家正在打的字
+				status.show("输入已改变，未替换（译文：" + res.translation + "）", 8);
+				log("out_stale:" + body + " => " + res.translation);
+				return;
+			}
+			// 发出去的内容按设置决定：只发英文，还是中英都留
+			var finalText = res.translation;
+			if (channel.hints.outgoingMode === "bilingual") {
+				finalText = body + separatorText() + res.translation;
+			}
+			// 两种形式都记：原文（游戏可能原样显示这句中文）+ 最终文本（也可能照搬）
+			rememberSent(body, finalText);
+			writeText(inp, finalText);
+			try { if (typeof inp.SetFocus === "function") inp.SetFocus(); } catch (e) {}
+			clearFailure();
+			status.show((channel.hints.outgoingMode === "bilingual"
+				? "已转成英文（中英都发），回车发送" : "已转成英文，回车发送"),
+				STATUS_HOLD_SECONDS);
+			log("out:" + body + " => " + finalText);
+		}, "fast");
+	}
+
+	function watchInput() {
+		var root = null;
+		try { root = $.GetContextPanel(); } catch (e) { return false; }
+		var inp = null;
+		try { inp = root.FindChildTraverse("ChatInput"); } catch (e) {}
+		if (!isValid(inp)) return false;
+		// 有事件钩子就挂一个（键入立刻响应）；轮询照旧保留做兜底
+		try {
+			if (typeof inp.SetPanelEvent === "function") {
+				inp.SetPanelEvent("ontextentrychange", function () { scanInput(); });
+			}
+		} catch (e) {}
+		return true;
+	}
+
+	// ---------------------------------------------------------------- 启动
+	// 状态提示只显示在一个地方（聊天输入框上方），而且尽量短：对局里视野宝贵。
+	// 失败时把**具体原因**塞进提示里，这样看一眼截图就能定位是哪一段断了。
+	//
+	// 注意最后那一条：只有"传输层的机器码"才缩写，**桥返回的中文说明原样保留**。
+	// 以前一律砍成 24 个字符，"API Key 无效或未设置（在 http://localhost:8791/settings
+	// 里填）"正好在尾巴上被砍掉 —— 最该看到的那句没了。
+	function shortError(err) {
+		var e = String(err || "unknown");
+		if (e.indexOf("timeout_no_page") === 0) return "面板未加载";
+		if (e.indexOf("timeout_no_response") === 0) return "面板无响应";
+		if (e.indexOf("timeout") === 0 || e === "http_timeout") return "超时";
+		if (e.indexOf("no_bridge_panel") === 0) return "无桥面板";
+		if (e.indexOf("seturl_failed") === 0) return "SetURL 失败";
+		if (e.indexOf("http_failed") === 0) return "直连失败";
+		if (e.indexOf("http_threw") === 0 || e.indexOf("http_no_promise") === 0) return "直连不可用";
+		// 已经像人话（含中文或空格）：原样给出去，别再砍
+		if (/[\u4e00-\u9fff]/.test(e) || e.indexOf(" ") !== -1) {
+			return e.length > 80 ? e.substring(0, 80) + "…" : e;
+		}
+		return e.substring(0, 24);
+	}
+
+	function healthTick() {
+		bus.send("health", null, REQUEST_TIMEOUT, function (res) {
+			if (res && res.ok) {
+				status.show(channel.mode === "http" ? "通译 就绪（直连）"
+					: "通译 就绪（面板）", 4);
+			} else {
+				// 把诊断码一起显示出来：看一眼截图就能知道卡在哪一段
+				status.show("通译 桥不通：" + shortError(res && res.error)
+					+ (channel.panelDead ? " · 面板失效" : "")
+					+ " [" + diag() + "]", 20);
+			}
+		});
+	}
+
+	function boot() {
+		// 整个启动流程包一层：出错就把原因写到状态行上。
+		// 之前脚本一旦在启动时抛异常，游戏里看到的是"状态灯灰色 + 状态行停在初始值"，
+		// 从外面完全看不出发生了什么 —— 现在至少能一眼看到崩在哪。
+		try {
+			bootInner();
+		} catch (e) {
+			try { status.show("通译 脚本错误：" + e, 60); } catch (e2) {}
+			try { $.Msg("[dlchat] boot failed: " + e + "\n"); } catch (e3) {}
+		}
+	}
+
+	function bootInner() {
+		var root = null;
+		try { root = $.GetContextPanel(); } catch (e) { return; }
+		var hasTopBar = false, hasChatList = false, hasInput = false;
+		try { hasTopBar = isValid(root.FindChildTraverse("Messages")); } catch (e) {}
+		try { hasChatList = isValid(root.FindChildTraverse("ChatMessages")); } catch (e) {}
+		try { hasInput = isValid(root.FindChildTraverse("ChatInput")); } catch (e) {}
+
+		var scope = hasTopBar ? "topbar" : (hasInput ? "chat" : "unknown");
+		var panelFound = isValid(bus.findPanel());
+		var canHttp = probeHttpChannel();
+
+		// 主通道：HTML 面板事件。必须在任何导航之前注册，否则第一批事件会漏掉。
+		registerPanelEvents();
+		// 布局里的 onactivate 只能调到全局名字，这里把设置面板的入口挂上去
+		exportGlobals();
+		registerHotkey();
+		exportSelfTest();
+		updateDot();
+
+		// 头顶气泡那块不显示状态：对局里一直挂着一行字太吵，而且同一个提示
+		// 会在两个布局里各显示一份。翻译本身照常工作。
+		var quiet = hasTopBar && !hasInput;
+
+		// 三个聊天容器各找到了没有 —— 这是"收不到消息"时第一个要看的数字。
+		// 聊天窗 = ChatMessages，气泡 = 根面板下的 Messages，大厅 = ChatLinesPanel
+		function surfacesFound() {
+			var root = null;
+			try { root = $.GetContextPanel(); } catch (e) { return "?"; }
+			if (!isValid(root)) return "?";
+			var bits = [];
+			if (view("ChatMessages", root)) bits.push("chat");
+			if (bubbleContainer(root)) bits.push("bubble");
+			if (view("ChatLinesPanel", root)) bits.push("lobby");
+			return bits.length ? bits.join("+") : "none";
+		}
+
+		log("boot", {
+			scope: scope, mod: MOD_TAG, topBar: hasTopBar, chatList: hasChatList,
+			input: hasInput, bridgePanel: panelFound, channel: channel.mode,
+			probe: channel.probeError, events: channel.eventsRegistered,
+			eventErrors: channel.eventErrors, hotkey: channel.hotkey,
+			surfaces: surfacesFound()
+		});
+
+		if (!quiet) {
+			if (!panelFound && !canHttp) {
+				status.show("通译：没有可用通道（布局未生效？）", 15);
+				return;
+			}
+			status.show("通译 通道：" + (canHttp ? "直连" : "面板"), 6);
+		}
+
+		var probeUrl = BRIDGE_BASE + "/api/v1/health";
+		function startRequests() {
+			if (channel.mode === "panel" && !quiet) {
+				status.show("通译 等面板显示…", 12);
+			}
+			// 面板通道必须等面板真的渲染出来（聊天面板打开）再动它
+			var waitDeadline = nowSeconds() + 90;
+			waitForPanel(waitDeadline, function (onScreen) {
+				channel.panelOnScreen = onScreen;
+				if (channel.mode === "panel" && !onScreen && !quiet) {
+					status.show("通译：面板未显示（打开聊天框再试）", 8);
+				}
+				var afterApi = function () {
+					if (channel.mode === "panel") {
+						probePanelNavigation(function () {
+							if (!quiet && channel.mode === "panel") {
+								status.show("通译 探针 G:" + (channel.pingLocal ? 1 : 0)
+									+ "/" + (channel.pingIp ? 1 : 0), 6);
+							}
+							healthTick();
+						});
+						return;
+					}
+					healthTick();
+				};
+				if (channel.mode === "panel" && channel.probeError === "no_promise_no_sendrequest") {
+					probeApiShapes(probeUrl, function () {
+						if (apiProbe.cbShape) {
+							channel.mode = "http";
+							channel.httpStyle = "cb";
+							log("api callback shape found: " + apiProbe.cbShape, apiProbe);
+						}
+						afterApi();
+					});
+					return;
+				}
+				afterApi();
+			});
+		}
+		try { $.Schedule(2.0, startRequests); } catch (e) { startRequests(); }
+		every(HEALTH_INTERVAL, function () {
+			if (bus.bridgeUp) return;      // 已确认在线就别占通道
+			// 面板通道已经判定失效时，允许重新探测一次直连 API：
+			// 启动早期探测有可能因为引擎还没就绪而失败，不能一次判死。
+			if (channel.mode === "panel" && channel.panelDead) {
+				channel.mode = null;
+				channel.panelDead = false;
+				probeHttpChannel();
+			}
+			healthTick();
+		});
+
+		// 三个界面一起扫（互不短路）：聊天窗 / 头顶气泡 / 大厅展开聊天。
+		// 每 0.25 秒一次，但每个界面内部只处理"新增的行"，所以绝大多数 tick 是空转。
+		every(ROW_SCAN_SECONDS, function () { scanAllSurfaces(); });
+		if (hasInput) {
+			watchInput();
+			every(INPUT_SCAN_SECONDS, scanInput);
+		}
+		every(0.5, function () { status.tick(); });
+	}
+
+	try { $.Schedule(0.3, boot); } catch (e) {}
+})();
