@@ -39,7 +39,7 @@ Deadlock（异锁）**文字聊天双向翻译**小工具。
 | 操作 | 作用 |
 |---|---|
 | 聊天框里打完中文后**连按两下空格** | 就地翻译成中英对照，回车发送 |
-| 游戏内 `/tongyi` 或 `F8` | 打开 mod 设置面板 |
+| 游戏内 `/tongyi` | 打开 mod 设置面板 |
 
 ## 源码结构
 
@@ -59,7 +59,18 @@ pip install -e .
 python -m unittest discover -s tests -t .    # 205 个测试
 ```
 
-打包：`python scripts\stage_compile.py --pack` 出 mod，`packaging\package_player_zip.bat` 组装玩家包。
+打包玩家包（三步，顺序不能换）：
+
+```powershell
+python scripts\stage_compile.py --pack   # 1. 编译 mod，出 dist_mod\dlchat_local\pak01_dir.vpk（游戏要关掉）
+python -m PyInstaller --clean --noconfirm --distpath dist --workpath build_pkgs packaging\bridge.spec
+                                         # 2. 打包翻译桥，出 dist\bridge\tongyi-launch.exe
+packaging\package_player_zip.bat         # 3. 组装 dist\deadlock-tongyi-players.zip
+```
+
+`build.bat` 是**另一件事**：它打的是桌面版，而且会把整个 `dist\` 删掉重建 ——
+跑过 `build.bat` 之后必须重新执行第 2 步，否则第 3 步会因为找不到
+`dist\bridge\tongyi-launch.exe` 而失败。
 
 ## 文档
 
@@ -74,7 +85,7 @@ python -m unittest discover -s tests -t .    # 205 个测试
 ## 注意
 
 * 需要一个翻译后端：默认 DeepSeek 云端，要自备 API Key（Key 只存在你自己电脑上，
-  也可以写进 `config.yaml`）；能在游戏内 F8 面板切成
+  也可以写进 `config.yaml`）；能在游戏内设置面板切成
   本机 Ollama（不出网）。
 * 翻译桥要开着才能翻，它跟着游戏一起启动、游戏退出就关 —— 所以配 Key、
   看状态这类事都要在**游戏运行期间**做。

@@ -413,7 +413,7 @@
 		eventCount: 0,       // 收到过多少个面板事件（主通道是否活着）
 		lastEventName: "",   // 最后一个事件名
 		lastEventText: "",   // 最后一个事件带来的文本（前 400 字符）
-		hotkey: "?",         // F8 快捷键绑定结果：panel / namespace / none
+		hotkey: "?",         // 快捷键绑定结果：恒为 "none"（F8 已废弃，见 noHotkey 注释）
 		hints: {             // 桥随响应带回来的渲染提示（跟随设置即时生效）
 			displayMode: "bilingual",
 			outgoingMode: "bilingual",
@@ -936,30 +936,12 @@
 		}
 	};
 
-	// 布局 onactivate 需要的全局函数（Panorama 的 onactivate 只能调到全局名字）
-	// 快捷键：F8 开/关设置面板。
-	// panorama.dll 里有 RegisterKeyBind 的报错文案，说明接口存在，但报错说第一个参数
-	// 得是面板对象或"输入命名空间字符串"。这里两种都试一遍，成功与否记进诊断码，
-	// 不成功也不影响 —— 按钮和 /tongyi 命令仍然可用。
-	function registerHotkey() {
-		var bound = "";
-		function bind(first) {
-			try {
-				$.RegisterKeyBind(first, "F8", function () {
-					if (ui.open) ui.hide(); else ui.show();
-				});
-				return true;
-			} catch (e) { return false; }
-		}
-		try {
-			if (typeof $.RegisterKeyBind === "function") {
-				var root = null;
-				try { root = $.GetContextPanel(); } catch (e) {}
-				if (root && bind(root)) bound = "panel";
-				else if (bind("")) bound = "namespace";
-			}
-		} catch (e) {}
-		channel.hotkey = bound || "none";
+	// 快捷键：**不提供了**。曾经用 $.RegisterKeyBind 试绑 F8（panel / namespace 两种
+	// 首参都试过），实测按了没反应 —— Panorama 这边绑不出可用的全局键。
+	// 打开设置面板请用聊天命令 /tongyi，或输入框那行的「设置」按钮。
+	// channel.hotkey 这个字段保留：串口工具（scripts/mod_log.py）会读它，恒为 "none"。
+	function noHotkey() {
+		channel.hotkey = "none";
 	}
 
 	// 所有入口包一层：单点出错只影响那一次操作，并且把原因显示出来
@@ -2794,7 +2776,7 @@
 		registerPanelEvents();
 		// 布局里的 onactivate 只能调到全局名字，这里把设置面板的入口挂上去
 		exportGlobals();
-		registerHotkey();
+		noHotkey();
 		exportSelfTest();
 		updateDot();
 
