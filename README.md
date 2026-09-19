@@ -24,8 +24,8 @@ Deadlock（异锁）**文字聊天双向翻译**小工具。
 到 [**Releases**](../../releases/latest) 下载 `deadlock-tongyi-players.zip`（约 36 MB），**不需要装 Python**：
 
 1. 解压到普通目录（别放 `Program Files`，会没有写权限）
-2. 双击 `tongyi_launch\START_HERE.bat`，它会生成一行 Steam 启动选项并复制到剪贴板。
-   粘到 Steam → 库 → 右键 Deadlock → 属性 → 启动选项（只需配这一次）
+2. 双击 `tongyi_launch\START_HERE.bat`。它会**自动**生成一行 Steam 启动选项并放进剪贴板，
+   你只要去 Steam 里 `Ctrl+V` 粘贴：库 → 右键 Deadlock → 属性 → 启动选项（只需配这一次）
 3. 用 Deadlock Mod Manager 导入 `mod\tongyi-pak01_dir.vpk`
 4. 先开一次游戏，再在浏览器打开 `http://localhost:8791/settings`，把 DeepSeek
    API Key 粘进去保存
@@ -67,10 +67,6 @@ python -m PyInstaller --clean --noconfirm --distpath dist --workpath build_pkgs 
                                          # 2. 打包翻译桥，出 dist\bridge\tongyi-launch.exe
 packaging\package_player_zip.bat         # 3. 组装 dist\deadlock-tongyi-players.zip
 ```
-
-`build.bat` 是**另一件事**：它打的是桌面版，而且会把整个 `dist\` 删掉重建 ——
-跑过 `build.bat` 之后必须重新执行第 2 步，否则第 3 步会因为找不到
-`dist\bridge\tongyi-launch.exe` 而失败。
 
 ## 文档
 
