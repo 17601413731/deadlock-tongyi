@@ -6,6 +6,21 @@ Deadlock（异锁）**文字聊天**双向翻译小工具。
 > 状态行显示「通译 就绪」，聊天框里输入 `/tongyi`（或 `/通译`；旧命令 `/dlchat` 仍然可用）
 > 打开设置面板。仓库/可执行文件名是 `deadlock-tongyi`。
 
+---
+
+## 只想用，不想编译
+
+到 [**Releases**](../../releases/latest) 下载 `deadlock-tongyi-players.zip`（约 36 MB），**不需要装 Python**：
+
+1. 解压到普通目录（别放 `Program Files`，会没有写权限）
+2. 双击 `tongyi_launch\START_HERE.bat`
+3. 用 Deadlock Mod Manager 导入 `mod\tongyi-pak01_dir.vpk`
+4. 浏览器打开 `http://localhost:8791/settings` 填一次 API Key
+
+下面是源码说明，给要改代码 / 重新编译 mod 的人看。
+
+---
+
 | 方向 | 做什么 | 怎么实现 |
 |---|---|---|
 | 看 | 队友/对手打的**英文**聊天 → **中文** | 聊天来源（控制台日志 或 屏幕 OCR）→ 术语约束翻译 → 游戏内悬浮窗 |
