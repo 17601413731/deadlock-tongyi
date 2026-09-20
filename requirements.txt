@@ -1,15 +1,8 @@
-# 核心依赖（Windows）
-PySide6>=6.6
+# 翻译桥的运行依赖（Windows）。
+#
+# 只有这几样：桥 = 一个本机 HTTP 服务 + 一个 OpenAI 兼容客户端。
+# 桌面版那一stack（PySide6 / numpy / Pillow / mss / pyperclip / keyboard /
+# pywin32 / rapidocr / dxcam）已随桌面版代码一起移除，理由见 pyproject.toml。
 openai>=1.0
 pydantic>=2.0
 PyYAML>=6.0
-numpy>=1.24
-Pillow>=10.0
-mss>=9.0
-pyperclip>=1.8
-keyboard>=0.13.5
-pywin32>=306
-
-# OCR 来源（可选，但推荐装：控制台日志不一定能拿到聊天）
-rapidocr>=3.0
-dxcam

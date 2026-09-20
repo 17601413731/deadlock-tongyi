@@ -27,8 +27,8 @@ setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
 set "LAUNCH="
-if exist "dist\bridge\tongyi-launch.exe" (
-  set "LAUNCH=%CD%\dist\bridge\tongyi-launch.exe"
+if exist "build\tongyi-launch\tongyi-launch.exe" (
+  set "LAUNCH=%CD%\build\tongyi-launch\tongyi-launch.exe"
 ) else (
   if exist ".venv\Scripts\pythonw.exe" (
     set "LAUNCH=%CD%\.venv\Scripts\pythonw.exe"

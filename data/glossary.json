@@ -1,18 +1,18 @@
 {
  "meta": {
-  "generated_at": "2026-09-12 21:16:33",
+  "generated_at": "2026-09-20 11:08:56",
   "game_dir": "D:\\software\\steam\\steamapps\\common\\Deadlock\\game",
   "modules": {
    "citadel_gc_hero_names": 51,
    "citadel_gc_mod_names": 194,
-   "citadel_heroes": 1180,
-   "citadel_attributes": 331,
-   "citadel_mods": 110,
-   "citadel_main": 1949,
-   "citadel_gc": 111
+   "citadel_heroes": 1055,
+   "citadel_attributes": 294,
+   "citadel_mods": 108,
+   "citadel_main": 1751,
+   "citadel_gc": 108
   },
-  "term_count": 3926,
-  "phrase_count": 118
+  "term_count": 3561,
+  "phrase_count": 117
  },
  "terms": {
   "Warden": {
@@ -110,7 +110,6 @@
   "Paradox": {
    "zh": "悖论",
    "aliases": [
-    "一枪超人",
     "灯泡女"
    ],
    "cat": "hero"
@@ -161,8 +160,6 @@
   "Bebop": {
    "zh": "比波普",
    "aliases": [
-    "屠夫",
-    "帕吉",
     "机器人",
     "钩子"
    ],
@@ -180,7 +177,6 @@
    "zh": "莫克双雄",
    "aliases": [
     "地鼠",
-    "沙王",
     "猪",
     "鼹鼠"
    ],
@@ -188,9 +184,7 @@
   },
   "Shiv": {
    "zh": "希弗",
-   "aliases": [
-    "斧王"
-   ],
+   "aliases": [],
    "cat": "hero"
   },
   "Ivy": {
@@ -241,7 +235,6 @@
    "zh": "蜃景",
    "aliases": [
     "灯神",
-    "米垃圾",
     "镇尼"
    ],
    "cat": "hero"
@@ -277,7 +270,6 @@
   "Sinclair": {
    "zh": "无双魔术师",
    "aliases": [
-    "拉比克",
     "腾讯",
     "辛克莱",
     "魔术师"
@@ -300,28 +292,20 @@
   },
   "Victor": {
    "zh": "维克多",
-   "aliases": [
-    "塞拉斯",
-    "弗兰克",
-    "骷髅王"
-   ],
+   "aliases": [],
    "cat": "hero"
   },
   "Mina": {
    "zh": "米娜",
    "aliases": [
     "吸血鬼",
-    "哈基米",
     "高分"
    ],
    "cat": "hero"
   },
   "Drifter": {
    "zh": "孤猎",
-   "aliases": [
-    "狼人",
-    "血魔"
-   ],
+   "aliases": [],
    "cat": "hero"
   },
   "Venator": {
@@ -385,9 +369,7 @@
   },
   "Rem": {
    "zh": "雷姆",
-   "aliases": [
-    "悠米"
-   ],
+   "aliases": [],
    "cat": "hero"
   },
   "Celeste": {
@@ -402,8 +384,7 @@
    "zh": "阿波罗",
    "aliases": [
     "击剑",
-    "剑客",
-    "提夫林"
+    "剑客"
    ],
    "cat": "hero"
   },
@@ -413,15 +394,13 @@
     "亡灵",
     "哥特女",
     "地雷妹",
-    "白毛",
-    "鬼女"
+    "白毛"
    ],
    "cat": "hero"
   },
   "Silver": {
    "zh": "西尔芙",
    "aliases": [
-    "狼人",
     "狼妹",
     "福瑞",
     "白银"
@@ -459,7 +438,6 @@
   "Melee Lifesteal": {
    "zh": "近战疗法",
    "aliases": [
-    "吸血",
     "近战",
     "近战吸取生命"
    ],
@@ -468,9 +446,7 @@
   "Tesla Bullets": {
    "zh": "特斯拉弹",
    "aliases": [
-    "漩涡",
-    "特斯拉",
-    "电锤"
+    "特斯拉"
    ],
    "cat": "item"
   },
@@ -501,24 +477,17 @@
   },
   "Heroic Aura": {
    "zh": "英雄光环",
-   "aliases": [
-    "战鼓"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Warp Stone": {
    "zh": "传送石",
-   "aliases": [
-    "跳刀",
-    "闪现"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Torment Pulse": {
    "zh": "痛苦脉冲",
-   "aliases": [
-    "风暴宝器"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Mystic Burst": {
@@ -590,9 +559,7 @@
   },
   "Weakening Headshot": {
    "zh": "头弹弱防",
-   "aliases": [
-    "头弹弱防"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Sharpshooter": {
@@ -632,9 +599,7 @@
   },
   "Monster Rounds": {
    "zh": "猎怪弹",
-   "aliases": [
-    "打野刀"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Hollow Point": {
@@ -654,16 +619,12 @@
   },
   "Fury Trance": {
    "zh": "怒意之潮",
-   "aliases": [
-    "疯脸"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Vampiric Burst": {
    "zh": "疗愈爆发",
-   "aliases": [
-    "撒旦"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Siphon Bullets": {
@@ -725,16 +686,12 @@
   },
   "Glass Cannon v2": {
    "zh": "玻璃大炮 v2",
-   "aliases": [
-    "玻璃大炮"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Armor Piercing Rounds": {
    "zh": "穿甲弹",
-   "aliases": [
-    "金箍棒"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Split Shot": {
@@ -744,23 +701,17 @@
   },
   "Blood Tribute": {
    "zh": "殷红贡礼",
-   "aliases": [
-    "臂章"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Cultist Sacrifice": {
    "zh": "特异供奉",
-   "aliases": [
-    "打野刀",
-    "点金手"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Capacitor": {
    "zh": "积雷电容",
    "aliases": [
-    "大电锤",
     "雷神之锤"
    ],
    "cat": "item"
@@ -773,15 +724,13 @@
   "Stalker": {
    "zh": "追猎",
    "aliases": [
-    "暗袭背刺",
-    "潜  行"
+    "潜行"
    ],
    "cat": "item"
   },
   "Express Shot": {
    "zh": "疾速射击",
    "aliases": [
-    "回音战刃",
     "连击刀"
    ],
    "cat": "item"
@@ -936,16 +885,12 @@
   },
   "Disarming Hex": {
    "zh": "缴械魔咒",
-   "aliases": [
-    "天堂",
-    "天堂之戟"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Ethereal Shift": {
    "zh": "身躯虚化",
    "aliases": [
-    "暗影邪典",
     "金身"
    ],
    "cat": "item"
@@ -957,9 +902,7 @@
   },
   "Refresher": {
    "zh": "刷新环",
-   "aliases": [
-    "刷新球"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Cold Front": {
@@ -983,18 +926,12 @@
   },
   "Vortex Web": {
    "zh": "雷织漩涡",
-   "aliases": [
-    "真空"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Cursed Relic": {
    "zh": "天谴圣物",
-   "aliases": [
-    "干扰",
-    "扰动",
-    "羊刀"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Bullet Resist Shredder": {
@@ -1024,9 +961,7 @@
   },
   "Infuser": {
    "zh": "灵力灌注",
-   "aliases": [
-    "血精石"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Spirit Strike": {
@@ -1099,7 +1034,6 @@
   "Bullet Lifesteal": {
    "zh": "子弹回复",
    "aliases": [
-    "吸血",
     "子弹吸取生命"
    ],
    "cat": "item"
@@ -1121,9 +1055,7 @@
   },
   "Restorative Locket": {
    "zh": "疗愈护符",
-   "aliases": [
-    "魔棒"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Bullet Armor": {
@@ -1140,9 +1072,7 @@
   },
   "Cheat Death": {
    "zh": "幸免于难",
-   "aliases": [
-    "不朽尸王"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Healing Booster": {
@@ -1187,9 +1117,7 @@
   },
   "Focus Lens": {
    "zh": "聚焦透镜",
-   "aliases": [
-    "紫怨"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Spirit Armor": {
@@ -1263,9 +1191,7 @@
   },
   "Unstoppable": {
    "zh": "势不可挡",
-   "aliases": [
-    "黑皇杖"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Colossus": {
@@ -1353,16 +1279,12 @@
   },
   "Healing Nova": {
    "zh": "治疗之环",
-   "aliases": [
-    "梅肯斯姆"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Shadow Weave": {
    "zh": "来去无踪",
-   "aliases": [
-    "隐刀"
-   ],
+   "aliases": [],
    "cat": "item"
   },
   "Majestic Leap - Disabled": {
@@ -1509,29 +1431,24 @@
    "cat": "item"
   },
   "Tank": {
-   "zh": "肉  盾",
+   "zh": "肉盾",
    "aliases": [],
    "cat": "ability"
   },
   "Brawler": {
-   "zh": "搏  斗",
+   "zh": "搏斗",
    "aliases": [
     "斗士"
    ],
    "cat": "ability"
   },
   "Bull-Headed": {
-   "zh": "无  脑",
+   "zh": "无脑",
    "aliases": [],
    "cat": "ability"
   },
   "Shoulder Charge": {
    "zh": "冲锋陷阵",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Applies +% Slow for s": {
-   "zh": "施加+%减速，持续秒",
    "aliases": [],
    "cat": "ability"
   },
@@ -1545,21 +1462,9 @@
    "aliases": [],
    "cat": "ability"
   },
-  "m": {
-   "zh": "米",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Bonus Duration": {
    "zh": "加成持续时间",
    "aliases": [],
-   "cat": "ability"
-  },
-  "s": {
-   "zh": "秒",
-   "aliases": [
-    "每秒伤害"
-   ],
    "cat": "ability"
   },
   "Cooldown Refunded": {
@@ -1570,18 +1475,6 @@
   "Weapon Damage Duration": {
    "zh": "武器伤害持续时间",
    "aliases": [],
-   "cat": "ability"
-  },
-  "On Hero Collide:": {
-   "zh": "与英雄相撞时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Wall Hit:": {
-   "zh": "撞墙时：",
-   "aliases": [
-    "撞到墙壁时："
-   ],
    "cat": "ability"
   },
   "Siphon Life": {
@@ -1597,8 +1490,7 @@
   "Lifesteal": {
    "zh": "生命吸取",
    "aliases": [
-    "吸取生命",
-    "生 命 吸 取"
+    "吸取生命"
    ],
    "cat": "ability"
   },
@@ -1645,32 +1537,22 @@
    "cat": "ability"
   },
   "High Voltage": {
-   "zh": "高  压  电",
+   "zh": "高压电",
    "aliases": [],
    "cat": "ability"
   },
   "Merciless": {
-   "zh": "无  情",
+   "zh": "无情",
    "aliases": [],
    "cat": "ability"
   },
   "Area Denial": {
-   "zh": "区 域 封 锁",
+   "zh": "区域封锁",
    "aliases": [],
    "cat": "ability"
   },
   "Static Charge": {
    "zh": "静态电荷",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+m Radius +m Cast range": {
-   "zh": "+米半径+米施法距离",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Stun Duration + Damage": {
-   "zh": "+秒眩晕时间+米伤害",
    "aliases": [],
    "cat": "ability"
   },
@@ -1684,11 +1566,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+ DPS and +m radius": {
-   "zh": "+每秒伤害+米半径",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Lightning Ball Slow": {
    "zh": "球状闪电减速",
    "aliases": [],
@@ -1696,11 +1573,6 @@
   },
   "Power Surge": {
    "zh": "澎湃电力",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s DurationApplies % Spirit Resist": {
-   "zh": "+秒持续时间施加%元灵抗性",
    "aliases": [],
    "cat": "ability"
   },
@@ -1721,11 +1593,6 @@
   },
   "Storm Cloud Lightning Strike": {
    "zh": "雷霆风暴闪电袭击",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ DPS+m Flight Speed": {
-   "zh": "+每秒伤害+米飞行速度",
    "aliases": [],
    "cat": "ability"
   },
@@ -1797,29 +1664,22 @@
    "cat": "ability"
   },
   "Inventor": {
-   "zh": "发  明  家",
+   "zh": "发明家",
    "aliases": [],
    "cat": "ability"
   },
   "Support": {
-   "zh": "辅  助",
+   "zh": "辅助",
    "aliases": [],
    "cat": "ability"
   },
   "Disruption": {
-   "zh": "干  扰",
-   "aliases": [
-    "干扰"
-   ],
+   "zh": "干扰",
+   "aliases": [],
    "cat": "ability"
   },
   "Spectral Wall": {
    "zh": "幻影屏障",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "s Cooldown and +s Duration": {
-   "zh": "秒冷却时间+秒持续时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -1840,11 +1700,6 @@
   },
   "Deploy a healing spirit": {
    "zh": "部署一个治疗之灵",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Duration": {
-   "zh": "+秒持续时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -1880,16 +1735,6 @@
   },
   "Bullet Damage": {
    "zh": "子弹伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "% per stack": {
-   "zh": "%每层叠加",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Per stack:": {
-   "zh": "每层叠加：",
    "aliases": [],
    "cat": "ability"
   },
@@ -1946,17 +1791,17 @@
    "cat": "ability"
   },
   "Duelist": {
-   "zh": "决 斗 达 人",
+   "zh": "决斗达人",
    "aliases": [],
    "cat": "ability"
   },
   "Isolator": {
-   "zh": "隔 绝 战 场",
+   "zh": "隔绝战场",
    "aliases": [],
    "cat": "ability"
   },
   "Telekinetic": {
-   "zh": "念  力",
+   "zh": "念力",
    "aliases": [],
    "cat": "ability"
   },
@@ -2007,11 +1852,6 @@
   },
   "Barrier": {
    "zh": "屏障",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Barrier:": {
-   "zh": "屏障：",
    "aliases": [],
    "cat": "ability"
   },
@@ -2097,30 +1937,25 @@
    "aliases": [],
    "cat": "ability"
   },
-  "/s": {
-   "zh": "/秒",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Reload Time": {
    "zh": "装填时间",
    "aliases": [],
    "cat": "ability"
   },
   "Calculated": {
-   "zh": "精 心 计 算",
+   "zh": "精心计算",
    "aliases": [],
    "cat": "ability"
   },
   "Disruptor": {
-   "zh": "干 扰 敌 军",
+   "zh": "干扰敌军",
    "aliases": [
-    "扰 乱 敌 军"
+    "扰乱敌军"
    ],
    "cat": "ability"
   },
   "Tactician": {
-   "zh": "战 术 专 家",
+   "zh": "战术专家",
    "aliases": [],
    "cat": "ability"
   },
@@ -2169,18 +2004,8 @@
    "aliases": [],
    "cat": "ability"
   },
-  "x": {
-   "zh": "倍",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Ally Weapon Damage": {
    "zh": "友军武器伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Duration +m Width+m Height": {
-   "zh": "+秒持续时间+米宽度+米高度",
    "aliases": [],
    "cat": "ability"
   },
@@ -2319,19 +2144,19 @@
    "cat": "ability"
   },
   "Arsonist": {
-   "zh": "纵  火",
+   "zh": "纵火",
    "aliases": [],
    "cat": "ability"
   },
   "Explosive": {
-   "zh": "火  爆",
+   "zh": "火爆",
    "aliases": [
-    "火 爆 十 足"
+    "火爆十足"
    ],
    "cat": "ability"
   },
   "Burn Rubber": {
-   "zh": "速 度 爆 发",
+   "zh": "速度爆发",
    "aliases": [],
    "cat": "ability"
   },
@@ -2342,16 +2167,6 @@
   },
   "Catalyst Damage Amp": {
    "zh": "催化剂伤害提升",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Napalm Effect: +% Lifesteal": {
-   "zh": "凝固汽油弹效果：+%吸取生命",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Napalm Effects:": {
-   "zh": "凝固汽油弹效果：",
    "aliases": [],
    "cat": "ability"
   },
@@ -2415,21 +2230,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Burn Effect: % Spirit Damage": {
-   "zh": "燃烧效果：%元灵伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Max Burn Duration": {
-   "zh": "+秒最长燃烧持续时间",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Burn Effect:": {
-   "zh": "燃烧效果：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Igniting": {
    "zh": "正在点燃",
    "aliases": [],
@@ -2481,19 +2281,19 @@
    "cat": "ability"
   },
   "Assassin": {
-   "zh": "精  准",
+   "zh": "精准",
    "aliases": [
     "刺客"
    ],
    "cat": "ability"
   },
   "Stealthy": {
-   "zh": "隐  秘",
+   "zh": "隐秘",
    "aliases": [],
    "cat": "ability"
   },
   "Lethal": {
-   "zh": "危  险",
+   "zh": "危险",
    "aliases": [],
    "cat": "ability"
   },
@@ -2574,7 +2374,7 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Enable  Ability Charges": {
+  "Enable Ability Charges": {
    "zh": "启用技能充能",
    "aliases": [],
    "cat": "ability"
@@ -2594,33 +2394,23 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+% Fire Rate +m Movespeed": {
-   "zh": "+%射速+米移动速度",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+% Evasion s Cooldown": {
-   "zh": "+%闪避秒冷却时间",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Dance Movespeed": {
    "zh": "弹雨移动速度",
    "aliases": [],
    "cat": "ability"
   },
   "Teamplay": {
-   "zh": "团 队 协 作",
+   "zh": "团队协作",
    "aliases": [],
    "cat": "ability"
   },
   "Initiator": {
-   "zh": "先  手",
+   "zh": "先手",
    "aliases": [],
    "cat": "ability"
   },
   "Clutch": {
-   "zh": "力 挽 狂 澜",
+   "zh": "力挽狂澜",
    "aliases": [],
    "cat": "ability"
   },
@@ -2689,18 +2479,8 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Cooldown and +s Duration": {
-   "zh": "秒冷却时间+秒持续时间",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Max Health Restored": {
    "zh": "恢复的最大生命值",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "%/s": {
-   "zh": "%/秒",
    "aliases": [],
    "cat": "ability"
   },
@@ -2720,12 +2500,12 @@
    "cat": "ability"
   },
   "Fearless": {
-   "zh": "无 所 畏 惧",
+   "zh": "无所畏惧",
    "aliases": [],
    "cat": "ability"
   },
   "One Man Army": {
-   "zh": "独 当 一 面",
+   "zh": "独当一面",
    "aliases": [],
    "cat": "ability"
   },
@@ -2769,7 +2549,7 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Hit enemies lose  Stamina": {
+  "Hit enemies lose Stamina": {
    "zh": "击中的敌人会失去耐力",
    "aliases": [],
    "cat": "ability"
@@ -2942,12 +2722,12 @@
    "cat": "ability"
   },
   "High Flying": {
-   "zh": "高 空 飞 行",
+   "zh": "高空飞行",
    "aliases": [],
    "cat": "ability"
   },
   "Arrogant": {
-   "zh": "傲  慢",
+   "zh": "傲慢",
    "aliases": [],
    "cat": "ability"
   },
@@ -3022,17 +2802,17 @@
    "cat": "ability"
   },
   "Protector": {
-   "zh": "保 护 他 人",
+   "zh": "保护他人",
    "aliases": [],
    "cat": "ability"
   },
   "Explorer": {
-   "zh": "探  险  家",
+   "zh": "探险家",
    "aliases": [],
    "cat": "ability"
   },
   "Ice Cold": {
-   "zh": "冰 冷 刺 骨",
+   "zh": "冰冷刺骨",
    "aliases": [],
    "cat": "ability"
   },
@@ -3137,17 +2917,17 @@
    "cat": "ability"
   },
   "Hook": {
-   "zh": "钩  子",
+   "zh": "钩子",
    "aliases": [],
    "cat": "ability"
   },
   "Bomb": {
-   "zh": "炸  弹",
+   "zh": "炸弹",
    "aliases": [],
    "cat": "ability"
   },
   "Punch": {
-   "zh": "拳  击",
+   "zh": "拳击",
    "aliases": [],
    "cat": "ability"
   },
@@ -3232,14 +3012,14 @@
    "cat": "ability"
   },
   "Crackshot": {
-   "zh": "神  射  手",
+   "zh": "神射手",
    "aliases": [
     "神枪手"
    ],
    "cat": "ability"
   },
   "Apprehender": {
-   "zh": "致 力 拘 捕",
+   "zh": "致力拘捕",
    "aliases": [],
    "cat": "ability"
   },
@@ -3278,11 +3058,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+s Stomp Stun": {
-   "zh": "+秒踩踏眩晕",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Stomp Damage": {
    "zh": "踩踏伤害",
    "aliases": [],
@@ -3308,9 +3083,11 @@
    "aliases": [],
    "cat": "ability"
   },
-  "-% Fading Move Speed": {
-   "zh": "-%逐渐衰减的移动速度",
-   "aliases": [],
+  "-Bullet Resist": {
+   "zh": "-子弹抗性",
+   "aliases": [
+    "- 子弹抗性"
+   ],
    "cat": "ability"
   },
   "Bonus Damage per Stack": {
@@ -3339,22 +3116,20 @@
    "cat": "ability"
   },
   "Tricksy": {
-   "zh": "诡 计 多 端",
+   "zh": "诡计多端",
    "aliases": [],
    "cat": "ability"
   },
   "Slippery": {
-   "zh": "狡  猾",
+   "zh": "狡猾",
    "aliases": [
-    "诡 计 多 端"
+    "诡计多端"
    ],
    "cat": "ability"
   },
   "Burst Damage": {
-   "zh": "爆 发 伤 害",
-   "aliases": [
-    "爆发伤害"
-   ],
+   "zh": "爆发伤害",
+   "aliases": [],
    "cat": "ability"
   },
   "Sekhmet's Spirit": {
@@ -3369,11 +3144,6 @@
   },
   "Leap at your enemies": {
    "zh": "跳向敌人",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Slow Duration": {
-   "zh": "+秒减速持续时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -3439,11 +3209,6 @@
    ],
    "cat": "ability"
   },
-  "+s Duration and + DPS.": {
-   "zh": "+秒持续时间+每秒伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Recall Ava": {
    "zh": "召回艾娃",
    "aliases": [],
@@ -3481,16 +3246,6 @@
   },
   "Melee Attack Speed": {
    "zh": "近战攻击速度",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "-Bullet Resist": {
-   "zh": "- 子弹抗性",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+% Slow Resist while Active": {
-   "zh": "激活时+%减速抗性",
    "aliases": [],
    "cat": "ability"
   },
@@ -3560,12 +3315,12 @@
    "cat": "ability"
   },
   "Precision": {
-   "zh": "百 步 穿 杨",
+   "zh": "百步穿杨",
    "aliases": [],
    "cat": "ability"
   },
   "Hunter": {
-   "zh": "猎  手",
+   "zh": "猎手",
    "aliases": [],
    "cat": "ability"
   },
@@ -3627,14 +3382,14 @@
    "cat": "ability"
   },
   "Self Damage": {
-   "zh": "伤 害 自 身",
+   "zh": "伤害自身",
    "aliases": [
     "对自身伤害"
    ],
    "cat": "ability"
   },
   "Fatale": {
-   "zh": "蛇 蝎 美 人",
+   "zh": "蛇蝎美人",
    "aliases": [],
    "cat": "ability"
   },
@@ -3645,11 +3400,6 @@
   },
   "Toxic Mess": {
    "zh": "毒性区域",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+m Radius and + Damage.": {
-   "zh": "+米半径+伤害",
    "aliases": [],
    "cat": "ability"
   },
@@ -3710,11 +3460,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+% Damage Amp": {
-   "zh": "+%伤害增强",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Blood Shards": {
    "zh": "晶体",
    "aliases": [],
@@ -3725,23 +3470,18 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Effect Per Stack:": {
-   "zh": "每层叠加效果：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Sniper": {
-   "zh": "狙  击  手",
+   "zh": "狙击手",
    "aliases": [],
    "cat": "ability"
   },
   "Soaring": {
-   "zh": "高  飞",
+   "zh": "高飞",
    "aliases": [],
    "cat": "ability"
   },
   "One Shot Kill": {
-   "zh": "一 击 制 敌",
+   "zh": "一击制敌",
    "aliases": [],
    "cat": "ability"
   },
@@ -3775,11 +3515,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+% base Ammo while flying": {
-   "zh": "飞行时+%基础弹药",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Spirit Damage Per Bullet": {
    "zh": "每发子弹造成的元灵伤害",
    "aliases": [],
@@ -3792,16 +3527,6 @@
   },
   "Crow Familiar": {
    "zh": "渡鸦仆使",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Applies % Healing Reduction": {
-   "zh": "施加%治疗降低",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+% Bleed Damage s Cooldown": {
-   "zh": "+%生命流失伤害秒冷却时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -3846,12 +3571,12 @@
    "cat": "ability"
   },
   "Tag-Team": {
-   "zh": "团 队 配 合",
+   "zh": "团队配合",
    "aliases": [],
    "cat": "ability"
   },
   "Burrower": {
-   "zh": "钻  地",
+   "zh": "钻地",
    "aliases": [],
    "cat": "ability"
   },
@@ -3880,18 +3605,8 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Cooldown and +m/s Move Speed": {
-   "zh": "秒冷却时间+米/秒移动速度",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Scorn": {
    "zh": "蔑视",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "s Cooldown +m Radius": {
-   "zh": "秒冷却时间+米半径",
    "aliases": [],
    "cat": "ability"
   },
@@ -3905,16 +3620,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+ Damage and +m Range": {
-   "zh": "+伤害+米距离",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Duration and  Cooldown": {
-   "zh": "+秒持续时间秒冷却时间",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Sand Blasted": {
    "zh": "沙暴",
    "aliases": [],
@@ -3922,11 +3627,6 @@
   },
   "Combo": {
    "zh": "连招",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+% lifesteal": {
-   "zh": "+%生命吸取",
    "aliases": [],
    "cat": "ability"
   },
@@ -3966,21 +3666,21 @@
    "cat": "ability"
   },
   "Rage": {
-   "zh": "怒  气",
+   "zh": "怒气",
    "aliases": [
     "怒气值"
    ],
    "cat": "ability"
   },
   "Bleed": {
-   "zh": "生 命 流 失",
+   "zh": "生命流失",
    "aliases": [
     "流失生命"
    ],
    "cat": "ability"
   },
   "Repeat": {
-   "zh": "多 次 重 复",
+   "zh": "多次重复",
    "aliases": [],
    "cat": "ability"
   },
@@ -4031,7 +3731,9 @@
   },
   "On hit": {
    "zh": "命中时",
-   "aliases": [],
+   "aliases": [
+    "击中时"
+   ],
    "cat": "ability"
   },
   "Dash Range": {
@@ -4061,11 +3763,6 @@
   },
   "Slice and Dice Heal Debuff": {
    "zh": "一网打尽治疗减益",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "% Spirit Resist+m Dash Range": {
-   "zh": "%元灵抗性+米冲刺距离",
    "aliases": [],
    "cat": "ability"
   },
@@ -4119,33 +3816,23 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+% Enemy Health Threshold": {
-   "zh": "+%敌人生命临界值",
+  "Current Health Damage": {
+   "zh": "当前生命值伤害",
    "aliases": [],
    "cat": "ability"
   },
   "Trickster": {
-   "zh": "智 计 百 出",
+   "zh": "智计百出",
    "aliases": [],
    "cat": "ability"
   },
   "Frogs": {
-   "zh": "青  蛙",
+   "zh": "青蛙",
    "aliases": [],
    "cat": "ability"
   },
   "Flying Cloak": {
    "zh": "飞行斗篷",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Weapon Damage for s": {
-   "zh": "+武器伤害，持续秒",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Lifetime and s Cooldown.": {
-   "zh": "+秒时长秒冷却时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -4211,43 +3898,28 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Current Health Damage": {
-   "zh": "当前生命值伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Duration and +m Radius": {
-   "zh": "+秒持续时间+米半径",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Afflicted": {
    "zh": "痛苦",
    "aliases": [],
    "cat": "ability"
   },
   "Bodyguard": {
-   "zh": "保  镖",
+   "zh": "保镖",
    "aliases": [],
    "cat": "ability"
   },
   "Traveller": {
-   "zh": "旅  行  者",
+   "zh": "旅行者",
    "aliases": [],
    "cat": "ability"
   },
   "Focused": {
-   "zh": "全 神 贯 注",
+   "zh": "全神贯注",
    "aliases": [],
    "cat": "ability"
   },
   "Dust Devil": {
    "zh": "尘卷风",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "s Cooldown+% Evasion": {
-   "zh": "秒冷却时间+%闪避",
    "aliases": [],
    "cat": "ability"
   },
@@ -4281,18 +3953,8 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+ Charge+s Duration": {
-   "zh": "+点充能+秒持续时间",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Health Stealing Duration": {
    "zh": "吸取生命值持续时间",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Health Steal Per Sec": {
-   "zh": "每秒生命吸取",
    "aliases": [],
    "cat": "ability"
   },
@@ -4357,12 +4019,12 @@
    "cat": "ability"
   },
   "Team-up": {
-   "zh": "配 合 队 友",
+   "zh": "配合队友",
    "aliases": [],
    "cat": "ability"
   },
   "Rock Solid": {
-   "zh": "坚 如 磐 石",
+   "zh": "坚如磐石",
    "aliases": [],
    "cat": "ability"
   },
@@ -4438,11 +4100,6 @@
   },
   "Scalding Spray": {
    "zh": "灼热飞浪",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Weapon Damage Gain Per Sec": {
-   "zh": "每秒获得的武器伤害",
    "aliases": [],
    "cat": "ability"
   },
@@ -4537,17 +4194,17 @@
    "cat": "ability"
   },
   "Relentless": {
-   "zh": "无  情",
+   "zh": "无情",
    "aliases": [],
    "cat": "ability"
   },
   "Acrobatics": {
-   "zh": "招 式 眩 目",
+   "zh": "招式眩目",
    "aliases": [],
    "cat": "ability"
   },
   "Pursuer": {
-   "zh": "追 敌 不 懈",
+   "zh": "追敌不懈",
    "aliases": [],
    "cat": "ability"
   },
@@ -4563,11 +4220,6 @@
   },
   "Full Charge Damage": {
    "zh": "完全充能伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+% Movement Slow for s": {
-   "zh": "+%移动减速，持续秒",
    "aliases": [],
    "cat": "ability"
   },
@@ -4591,11 +4243,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Upon reaching target:": {
-   "zh": "到达目标位置后：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Shadow Transformation": {
    "zh": "暗影变身术",
    "aliases": [],
@@ -4603,11 +4250,6 @@
   },
   "Become invincible and more powerful": {
    "zh": "变得无敌且更为强大",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+m Move Speed and  Cooldown": {
-   "zh": "+米移动速度秒冷却时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -4658,38 +4300,23 @@
    "aliases": [],
    "cat": "ability"
   },
-  "% of Max Health": {
-   "zh": "%最大生命",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Bonus Spirit": {
    "zh": "额外元灵",
    "aliases": [],
    "cat": "ability"
   },
-  "Movement slow": {
-   "zh": "移动减速",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Evasive": {
-   "zh": "捉 摸 不 定",
+   "zh": "捉摸不定",
    "aliases": [],
    "cat": "ability"
   },
   "Gooey": {
-   "zh": "黏  糊  糊",
+   "zh": "黏糊糊",
    "aliases": [],
    "cat": "ability"
   },
   "Splatter": {
    "zh": "爆汁魔球",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Damage and +m Radius": {
-   "zh": "+伤害+米半径",
    "aliases": [],
    "cat": "ability"
   },
@@ -4718,11 +4345,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+ Damage and +% Resists": {
-   "zh": "+伤害和+%抗性",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Ball Radius": {
    "zh": "球半径",
    "aliases": [],
@@ -4735,11 +4357,6 @@
   },
   "+ Charge and + Damage": {
    "zh": "+充能+伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+m Radius and +% Lifesteal": {
-   "zh": "+米半径+%吸取生命",
    "aliases": [],
    "cat": "ability"
   },
@@ -4854,12 +4471,12 @@
    "cat": "ability"
   },
   "Gunner": {
-   "zh": "机  枪  手",
+   "zh": "机枪手",
    "aliases": [],
    "cat": "ability"
   },
   "Rat-a-Tat": {
-   "zh": "砰  砰  砰",
+   "zh": "砰砰砰",
    "aliases": [],
    "cat": "ability"
   },
@@ -4979,12 +4596,12 @@
    "cat": "ability"
   },
   "Copycat": {
-   "zh": "模 仿 大 师",
+   "zh": "模仿大师",
    "aliases": [],
    "cat": "ability"
   },
   "Versatile": {
-   "zh": "战 术 多 变",
+   "zh": "战术多变",
    "aliases": [],
    "cat": "ability"
   },
@@ -5040,11 +4657,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+s Duration & 5m Range": {
-   "zh": "+秒持续时间5米范围",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Assistant Health": {
    "zh": "助手生命值",
    "aliases": [],
@@ -5092,11 +4704,6 @@
   },
   "Hexed!": {
    "zh": "扰动！",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Hex all enemies within m": {
-   "zh": "扰动米内的所有敌人",
    "aliases": [],
    "cat": "ability"
   },
@@ -5308,17 +4915,17 @@
    "cat": "ability"
   },
   "Harasser": {
-   "zh": "骚  扰",
+   "zh": "骚扰",
    "aliases": [],
    "cat": "ability"
   },
   "Nimble": {
-   "zh": "灵  活",
+   "zh": "灵活",
    "aliases": [],
    "cat": "ability"
   },
   "Vexing": {
-   "zh": "捣  乱",
+   "zh": "捣乱",
    "aliases": [],
    "cat": "ability"
   },
@@ -5329,11 +4936,6 @@
   },
   "+ Damage & Bonus Damage": {
    "zh": "+伤害和额外伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Double Hit:": {
-   "zh": "双重命中时：",
    "aliases": [],
    "cat": "ability"
   },
@@ -5349,11 +4951,6 @@
   },
   "Sanguine Retreat": {
    "zh": "绯红蝠影",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Recast+m Range": {
-   "zh": "+再次施放+米距离",
    "aliases": [],
    "cat": "ability"
   },
@@ -5398,12 +4995,12 @@
    "cat": "ability"
   },
   "Punk": {
-   "zh": "朋  克",
+   "zh": "朋克",
    "aliases": [],
    "cat": "ability"
   },
   "Chaotic": {
-   "zh": "混  乱",
+   "zh": "混乱",
    "aliases": [],
    "cat": "ability"
   },
@@ -5449,33 +5046,8 @@
    "aliases": [],
    "cat": "ability"
   },
-  "While Blasted: +m/s": {
-   "zh": "烂醉时：+米/秒",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Wrecked:": {
-   "zh": "醉酒：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Blasted Melee:": {
-   "zh": "烂醉的近战攻击时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "While Blasted:": {
-   "zh": "烂醉时：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Bashdown": {
    "zh": "向下猛击",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Charge and +m Radius": {
-   "zh": "+点充能+米半径",
    "aliases": [],
    "cat": "ability"
   },
@@ -5499,18 +5071,8 @@
    "aliases": [],
    "cat": "ability"
   },
-  "On Impact: +%  for s": {
-   "zh": "撞击时：+%，持续秒",
-   "aliases": [],
-   "cat": "ability"
-  },
   "s Charge Duration": {
    "zh": "秒冲刺持续时间",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Impact:": {
-   "zh": "撞击时：",
    "aliases": [],
    "cat": "ability"
   },
@@ -5530,17 +5092,17 @@
    "cat": "ability"
   },
   "Disorienting": {
-   "zh": "迷 惑 对 手",
+   "zh": "迷惑对手",
    "aliases": [],
    "cat": "ability"
   },
   "Map Control": {
-   "zh": "地 图 控 制",
+   "zh": "地图控制",
    "aliases": [],
    "cat": "ability"
   },
   "Mind Games": {
-   "zh": "脑 力 较 量",
+   "zh": "脑力较量",
    "aliases": [],
    "cat": "ability"
   },
@@ -5566,11 +5128,6 @@
   },
   "Bell Lifetime": {
    "zh": "铃铛时长",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Hit": {
-   "zh": "击中时",
    "aliases": [],
    "cat": "ability"
   },
@@ -5619,7 +5176,7 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Stamina Drain and  Cooldown": {
+  "Stamina Drain and Cooldown": {
    "zh": "耐力消耗秒冷却时间",
    "aliases": [],
    "cat": "ability"
@@ -5700,12 +5257,12 @@
    "cat": "ability"
   },
   "Can't": {
-   "zh": "就  是",
+   "zh": "就是",
    "aliases": [],
    "cat": "ability"
   },
   "Kill Me": {
-   "zh": "屹 立 不 倒",
+   "zh": "屹立不倒",
    "aliases": [],
    "cat": "ability"
   },
@@ -5764,11 +5321,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+m RadiusEnemies take +% Damage": {
-   "zh": "+米半径敌人受到+%伤害",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Damage Taken": {
    "zh": "承受的伤害",
    "aliases": [
@@ -5807,12 +5359,12 @@
    "cat": "ability"
   },
   "Bloodthirsty": {
-   "zh": "好  战",
+   "zh": "好战",
    "aliases": [],
    "cat": "ability"
   },
   "Cruel": {
-   "zh": "不 择 手 段",
+   "zh": "不择手段",
    "aliases": [],
    "cat": "ability"
   },
@@ -5843,28 +5395,13 @@
    "aliases": [],
    "cat": "ability"
   },
-  "% Bullet Resist": {
-   "zh": "%子弹抗性",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Ambush": {
    "zh": "伏击",
    "aliases": [],
    "cat": "ability"
   },
-  "After ambushing:": {
-   "zh": "伏击后：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Bloodscent": {
    "zh": "腥气",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Isolated Hero Death:": {
-   "zh": "落单敌人倒下时：",
    "aliases": [],
    "cat": "ability"
   },
@@ -5910,16 +5447,6 @@
   },
   "Hungry": {
    "zh": "嗜血",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Satiated:": {
-   "zh": "满足：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Hungry:": {
-   "zh": "嗜血：",
    "aliases": [],
    "cat": "ability"
   },
@@ -5969,12 +5496,12 @@
    "cat": "ability"
   },
   "Helpful": {
-   "zh": "雪 中 送 炭",
+   "zh": "雪中送炭",
    "aliases": [],
    "cat": "ability"
   },
   "Booksmart": {
-   "zh": "聪 慧 过 人",
+   "zh": "聪慧过人",
    "aliases": [],
    "cat": "ability"
   },
@@ -6005,16 +5532,6 @@
   },
   "Fight": {
    "zh": "进攻",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Barrier: +% Fire Rate": {
-   "zh": "获得屏障时：+%射速",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Barrier and +s Duration": {
-   "zh": "+屏障+秒持续时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -6113,11 +5630,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Move/Dash Slow": {
-   "zh": "移动/冲刺减速",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Pillow Toss": {
    "zh": "枕头大战",
    "aliases": [],
@@ -6173,16 +5685,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Following Hero:": {
-   "zh": "跟随英雄：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Following Trooper:": {
-   "zh": "跟随步兵：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Hop To Ally": {
    "zh": "跳到友军",
    "aliases": [],
@@ -6190,16 +5692,6 @@
   },
   "Lil Helpers": {
    "zh": "小小帮手",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Helper+m/s Move Speed": {
-   "zh": "+帮手+米/秒移动速度",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Helper+% Spirit Resist": {
-   "zh": "+帮手+%元灵抗性",
    "aliases": [],
    "cat": "ability"
   },
@@ -6240,11 +5732,6 @@
   },
   "Jar of Dead": {
    "zh": "故人之罐",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+ Deadheads+s Deadhead Lifetime": {
-   "zh": "+个怨灵+秒怨灵时长",
    "aliases": [],
    "cat": "ability"
   },
@@ -6343,16 +5830,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "+% Ghoul Speeds Cooldown": {
-   "zh": "+%土灵速度秒冷却时间",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Durations Time To Spawn": {
-   "zh": "+秒持续时间秒产生所需时间",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Max Gravestones": {
    "zh": "最大墓碑数",
    "aliases": [],
@@ -6370,11 +5847,6 @@
   },
   "Gravedigging": {
    "zh": "掘墓",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+% Ghoul Speed": {
-   "zh": "+%土灵速度",
    "aliases": [],
    "cat": "ability"
   },
@@ -6463,11 +5935,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Summon a Deadhead every  stacks": {
-   "zh": "每层叠加召唤一个怨灵",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Deadheads on Kill": {
    "zh": "倒下时怨灵数量",
    "aliases": [],
@@ -6478,28 +5945,8 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Human Form:": {
-   "zh": "人形态：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Werewolf Form:": {
-   "zh": "狼人形态：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "While Transformed:": {
-   "zh": "变身时：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Lycan Curse": {
    "zh": "狼人咒缚",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+% Bullet & Spirit Resistance": {
-   "zh": "+%子弹和元灵抗性",
    "aliases": [],
    "cat": "ability"
   },
@@ -6533,7 +5980,7 @@
    "aliases": [],
    "cat": "ability"
   },
-  "On Hero Hit: Restore  Stamina": {
+  "On Hero Hit: Restore Stamina": {
    "zh": "击中英雄时：恢复耐力",
    "aliases": [],
    "cat": "ability"
@@ -6590,11 +6037,6 @@
   },
   "Tail Whack": {
    "zh": "长尾猛击",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "+s Debuff Duration": {
-   "zh": "+秒减益持续时间",
    "aliases": [],
    "cat": "ability"
   },
@@ -6658,11 +6100,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "On-Hit: Execute enemies below %": {
-   "zh": "命中时：淘汰生命低于%的敌人",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Total Shots": {
    "zh": "总发射次数",
    "aliases": [],
@@ -6695,11 +6132,6 @@
   },
   "Ira Domini - Pure": {
    "zh": "主的愤怒 - 纯粹",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "While Blessed:": {
-   "zh": "受到福佑时：",
    "aliases": [],
    "cat": "ability"
   },
@@ -6805,11 +6237,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "Can be Recast within s": {
-   "zh": "秒内可再次施放",
-   "aliases": [],
-   "cat": "ability"
-  },
   "On Player Hit": {
    "zh": "击中玩家时",
    "aliases": [],
@@ -6820,11 +6247,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "On Use:": {
-   "zh": "使用时：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Flawless Advance": {
    "zh": "无瑕突进",
    "aliases": [],
@@ -6832,11 +6254,6 @@
   },
   "Perfect Hit on Hero: Heal": {
    "zh": "完美击中英雄时：治疗",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Perfect Hold:": {
-   "zh": "完美施放时：",
    "aliases": [],
    "cat": "ability"
   },
@@ -6905,11 +6322,6 @@
    "aliases": [],
    "cat": "ability"
   },
-  "On Pommel Hit:": {
-   "zh": "剑柄击中时：",
-   "aliases": [],
-   "cat": "ability"
-  },
   "Invulnerability Duration": {
    "zh": "无敌持续时间",
    "aliases": [],
@@ -6942,126 +6354,6 @@
   },
   "Grand Finale": {
    "zh": "终结乐章",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Hit:": {
-   "zh": "命中时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Kill:": {
-   "zh": "击败时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Hero Hit:": {
-   "zh": "命中英雄时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Hero Kill:": {
-   "zh": "击败英雄时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Enemy Hit:": {
-   "zh": "击中敌人时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Friendly Hit:": {
-   "zh": "击中友军时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Headshot:": {
-   "zh": "头弹时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Buff:": {
-   "zh": "获得增益时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Debuff:": {
-   "zh": "获得减益时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Landing:": {
-   "zh": "着陆时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "Passive:": {
-   "zh": "被动：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Proc:": {
-   "zh": "触发时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Stack:": {
-   "zh": "叠加时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Max Stacks:": {
-   "zh": "达到最大叠加层数时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "When Inactive:": {
-   "zh": "未启用时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "When Active:": {
-   "zh": "启用时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Melee:": {
-   "zh": "近战攻击时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Barrier:": {
-   "zh": "获得屏障时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Revive:": {
-   "zh": "复活时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Empowered Cast:": {
-   "zh": "加强施法时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Barrier Expire:": {
-   "zh": "屏障结束时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Cast:": {
-   "zh": "施放时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Slide:": {
-   "zh": "滑行时：",
-   "aliases": [],
-   "cat": "ability"
-  },
-  "On Death:": {
-   "zh": "倒下时：",
    "aliases": [],
    "cat": "ability"
   },
@@ -7291,84 +6583,84 @@
    "cat": "ability"
   },
   "Tiny": {
-   "zh": "超  小",
+   "zh": "超小",
    "aliases": [],
    "cat": "ability"
   },
   "zZzzZ": {
-   "zh": "呼  呼  呼",
+   "zh": "呼呼呼",
    "aliases": [],
    "cat": "ability"
   },
   "Finesse": {
-   "zh": "招 式 精 妙",
+   "zh": "招式精妙",
    "aliases": [],
    "cat": "ability"
   },
   "Mobility": {
-   "zh": "灵  动",
+   "zh": "灵动",
    "aliases": [
     "机动"
    ],
    "cat": "ability"
   },
   "A Cut Above": {
-   "zh": "技 高 一 筹",
+   "zh": "技高一筹",
    "aliases": [],
    "cat": "ability"
   },
   "Morbid": {
-   "zh": "病  态",
+   "zh": "病态",
    "aliases": [],
    "cat": "ability"
   },
   "Necromancer": {
-   "zh": "魂 灵 法 师",
+   "zh": "魂灵法师",
    "aliases": [],
    "cat": "ability"
   },
   "Devout": {
-   "zh": "虔  诚",
+   "zh": "虔诚",
    "aliases": [],
    "cat": "ability"
   },
   "Arms Expert": {
-   "zh": "武 器 专 家",
+   "zh": "武器专家",
    "aliases": [],
    "cat": "ability"
   },
   "Tactical": {
-   "zh": "战  术",
+   "zh": "战术",
    "aliases": [],
    "cat": "ability"
   },
   "Performer": {
-   "zh": "表  演",
+   "zh": "表演",
    "aliases": [],
    "cat": "ability"
   },
   "Disruptive": {
-   "zh": "干  扰",
+   "zh": "干扰",
    "aliases": [],
    "cat": "ability"
   },
   "Dazzling": {
-   "zh": "眩  目",
+   "zh": "眩目",
    "aliases": [],
    "cat": "ability"
   },
   "Feral": {
-   "zh": "野  性",
+   "zh": "野性",
    "aliases": [],
    "cat": "ability"
   },
   "Hot Mess": {
-   "zh": "混  乱",
+   "zh": "混乱",
    "aliases": [],
    "cat": "ability"
   },
   "Transformation": {
-   "zh": "变  身",
+   "zh": "变身",
    "aliases": [],
    "cat": "ability"
   },
@@ -7607,16 +6899,6 @@
    "aliases": [],
    "cat": "status"
   },
-  "On Explode:": {
-   "zh": "爆炸时：",
-   "aliases": [],
-   "cat": "status"
-  },
-  "On Attach:": {
-   "zh": "附着时：",
-   "aliases": [],
-   "cat": "status"
-  },
   "Light Melee": {
    "zh": "近战轻击",
    "aliases": [],
@@ -7654,11 +6936,6 @@
   },
   "Spirit Power": {
    "zh": "元灵力量",
-   "aliases": [],
-   "cat": "status"
-  },
-  "Bullets per sec": {
-   "zh": "射速",
    "aliases": [],
    "cat": "status"
   },
@@ -7746,11 +7023,6 @@
   },
   "Bullet Velocity": {
    "zh": "子弹速度",
-   "aliases": [],
-   "cat": "status"
-  },
-  "m/s": {
-   "zh": "米/秒",
    "aliases": [],
    "cat": "status"
   },
@@ -7868,11 +7140,6 @@
   },
   "Detection Radius": {
    "zh": "探测半径",
-   "aliases": [],
-   "cat": "status"
-  },
-  "/sec": {
-   "zh": "/秒",
    "aliases": [],
    "cat": "status"
   },
@@ -8041,11 +7308,6 @@
    "aliases": [],
    "cat": "status"
   },
-  "%/sec": {
-   "zh": "%/秒",
-   "aliases": [],
-   "cat": "status"
-  },
   "Current Health": {
    "zh": "当前生命值",
    "aliases": [],
@@ -8058,6 +7320,11 @@
   },
   "Ability Cooldown Reduction": {
    "zh": "技能冷却时间减少",
+   "aliases": [],
+   "cat": "status"
+  },
+  "Ultimate Cooldown Reduction": {
+   "zh": "终极技能冷却时间减少",
    "aliases": [],
    "cat": "status"
   },
@@ -8338,21 +7605,6 @@
    "aliases": [],
    "cat": "status"
   },
-  "Max Stacks": {
-   "zh": "最大叠加层数",
-   "aliases": [],
-   "cat": "status"
-  },
-  "Current Stacks:": {
-   "zh": "当前叠加层数：",
-   "aliases": [],
-   "cat": "status"
-  },
-  "Current Bonus:": {
-   "zh": "当前加成：",
-   "aliases": [],
-   "cat": "status"
-  },
   "Damage Threshold": {
    "zh": "伤害临界值",
    "aliases": [],
@@ -8392,7 +7644,9 @@
   },
   "Charge Delay": {
    "zh": "充能冷却",
-   "aliases": [],
+   "aliases": [
+    "充能延迟"
+   ],
    "cat": "status"
   },
   "Charge-Up Time": {
@@ -8450,11 +7704,6 @@
    "aliases": [],
    "cat": "status"
   },
-  "dps": {
-   "zh": "每秒伤害",
-   "aliases": [],
-   "cat": "status"
-  },
   "Targets Hit Per Shot": {
    "zh": "每次射击命中目标数",
    "aliases": [],
@@ -8462,11 +7711,6 @@
   },
   "Health Cost": {
    "zh": "生命值消耗",
-   "aliases": [],
-   "cat": "status"
-  },
-  "Damage/Heal Per Target": {
-   "zh": "每个目标伤害/治疗量",
    "aliases": [],
    "cat": "status"
   },
@@ -8545,11 +7789,6 @@
    "aliases": [],
    "cat": "status"
   },
-  "% Max Health": {
-   "zh": "%最大生命值",
-   "aliases": [],
-   "cat": "status"
-  },
   "Weapon Damage per Stack": {
    "zh": "每层叠加的武器伤害",
    "aliases": [
@@ -8602,18 +7841,8 @@
    "aliases": [],
    "cat": "status"
   },
-  "hp/sec": {
-   "zh": "生命/秒",
-   "aliases": [],
-   "cat": "status"
-  },
   "Delay": {
    "zh": "延迟",
-   "aliases": [],
-   "cat": "status"
-  },
-  "SILENCER": {
-   "zh": "沉默子弹",
    "aliases": [],
    "cat": "status"
   },
@@ -8721,11 +7950,6 @@
   },
   "Slide Distance": {
    "zh": "滑行距离",
-   "aliases": [],
-   "cat": "status"
-  },
-  "Air Jump/Dash Distance": {
-   "zh": "空中跳跃/冲刺距离",
    "aliases": [],
    "cat": "status"
   },
@@ -8944,11 +8168,6 @@
    "aliases": [],
    "cat": "status"
   },
-  "Weapon Damage Per Kill": {
-   "zh": "每次击败获得武器伤害",
-   "aliases": [],
-   "cat": "status"
-  },
   "Imbued Lifesteal": {
    "zh": "加强生命吸取",
    "aliases": [],
@@ -8961,11 +8180,6 @@
   },
   "Regeneration Duration": {
    "zh": "恢复持续时间",
-   "aliases": [],
-   "cat": "status"
-  },
-  "HP/s": {
-   "zh": "生命/秒",
    "aliases": [],
    "cat": "status"
   },
@@ -8984,18 +8198,8 @@
    "aliases": [],
    "cat": "status"
   },
-  "slow": {
-   "zh": "减速",
-   "aliases": [],
-   "cat": "status"
-  },
   "increased damage": {
    "zh": "伤害增加量",
-   "aliases": [],
-   "cat": "status"
-  },
-  "spirit damage": {
-   "zh": "元灵伤害",
    "aliases": [],
    "cat": "status"
   },
@@ -9004,58 +8208,8 @@
    "aliases": [],
    "cat": "status"
   },
-  "bonus spirit damage": {
-   "zh": "额外元灵伤害",
-   "aliases": [],
-   "cat": "status"
-  },
-  "stun": {
-   "zh": "眩晕",
-   "aliases": [],
-   "cat": "status"
-  },
-  "heal": {
-   "zh": "治疗",
-   "aliases": [],
-   "cat": "status"
-  },
   "heals": {
    "zh": "治疗",
-   "aliases": [],
-   "cat": "status"
-  },
-  "healing": {
-   "zh": "治疗",
-   "aliases": [],
-   "cat": "status"
-  },
-  "health": {
-   "zh": "生命值",
-   "aliases": [],
-   "cat": "status"
-  },
-  "max health": {
-   "zh": "最大生命值",
-   "aliases": [],
-   "cat": "status"
-  },
-  "regeneration": {
-   "zh": "恢复",
-   "aliases": [],
-   "cat": "status"
-  },
-  "melee damage": {
-   "zh": "近战伤害",
-   "aliases": [],
-   "cat": "status"
-  },
-  "bullet damage": {
-   "zh": "子弹伤害",
-   "aliases": [],
-   "cat": "status"
-  },
-  "fire rate": {
-   "zh": "射速",
    "aliases": [],
    "cat": "status"
   },
@@ -9066,51 +8220,6 @@
   },
   "bonus fire rate": {
    "zh": "额外射速",
-   "aliases": [],
-   "cat": "status"
-  },
-  "move speed": {
-   "zh": "移动速度",
-   "aliases": [],
-   "cat": "status"
-  },
-  "weapon damage": {
-   "zh": "武器伤害",
-   "aliases": [],
-   "cat": "status"
-  },
-  "bonus weapon damage": {
-   "zh": "额外武器伤害",
-   "aliases": [],
-   "cat": "status"
-  },
-  "spirit resist": {
-   "zh": "元灵抗性",
-   "aliases": [],
-   "cat": "status"
-  },
-  "bullet resist": {
-   "zh": "子弹抗性",
-   "aliases": [],
-   "cat": "status"
-  },
-  "barrier": {
-   "zh": "屏障",
-   "aliases": [],
-   "cat": "status"
-  },
-  "immobilize": {
-   "zh": "定身",
-   "aliases": [],
-   "cat": "status"
-  },
-  "sleep": {
-   "zh": "睡眠",
-   "aliases": [],
-   "cat": "status"
-  },
-  "stamina recovery": {
-   "zh": "耐力恢复",
    "aliases": [],
    "cat": "status"
   },
@@ -9236,11 +8345,6 @@
   },
   "Healing From Heroes": {
    "zh": "来自英雄的治疗",
-   "aliases": [],
-   "cat": "item"
-  },
-  "Healing From NPCs / Orbs": {
-   "zh": "来自非英雄角色/光球的治疗",
    "aliases": [],
    "cat": "item"
   },
@@ -9491,11 +8595,6 @@
   },
   "Souls To Gain": {
    "zh": "可获得魂魄",
-   "aliases": [],
-   "cat": "item"
-  },
-  "Sell Bonus Souls:": {
-   "zh": "积累额外灵魂：",
    "aliases": [],
    "cat": "item"
   },
@@ -10035,13 +9134,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Obj Dmg:": {
-   "zh": "目标伤害：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Round": {
-   "zh": "第  回合",
+   "zh": "第回合",
    "aliases": [],
    "cat": "ui"
   },
@@ -10062,7 +9156,9 @@
   },
   "Please wait": {
    "zh": "请稍等",
-   "aliases": [],
+   "aliases": [
+    "请等待"
+   ],
    "cat": "ui"
   },
   "Submitting User": {
@@ -10082,11 +9178,6 @@
   },
   "Discord Invite": {
    "zh": "邀请",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Link:": {
-   "zh": "链接：",
    "aliases": [],
    "cat": "ui"
   },
@@ -10215,28 +9306,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Select a Friend from Steam:": {
-   "zh": "选择好友：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Email:": {
-   "zh": "电子邮件：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Email Address": {
    "zh": "电子邮件地址",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Select Region:": {
-   "zh": "选择地区：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Comments:": {
-   "zh": "留言：",
    "aliases": [],
    "cat": "ui"
   },
@@ -10252,16 +9323,6 @@
   },
   "South America": {
    "zh": "南美洲",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Europe": {
-   "zh": "欧洲",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Asia/Pacific": {
-   "zh": "亚太地区",
    "aliases": [],
    "cat": "ui"
   },
@@ -10282,16 +9343,6 @@
   },
   "Report Player": {
    "zh": "举报玩家",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Reason:": {
-   "zh": "原因：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Voice/Text Abuse": {
-   "zh": "滥用语音/文字",
    "aliases": [],
    "cat": "ui"
   },
@@ -10342,26 +9393,6 @@
   },
   "Skip Tutorial": {
    "zh": "跳过教程",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "N America": {
-   "zh": "北美洲",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Asia": {
-   "zh": "亚洲",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "S America": {
-   "zh": "南美洲",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Oceania": {
-   "zh": "大洋洲",
    "aliases": [],
    "cat": "ui"
   },
@@ -10464,12 +9495,12 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Can't Pause for  more seconds": {
+  "Can't Pause for more seconds": {
    "zh": "秒后才能暂停",
    "aliases": [],
    "cat": "ui"
   },
-  "Can't Unpause for  more seconds": {
+  "Can't Unpause for more seconds": {
    "zh": "秒后才能结束暂停",
    "aliases": [],
    "cat": "ui"
@@ -10546,16 +9577,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "sec": {
-   "zh": "秒",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Respawn in:": {
-   "zh": "重生倒计时：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "HOLDto Ride": {
    "zh": "按住搭乘",
    "aliases": [],
@@ -10568,10 +9589,12 @@
   },
   "HOLD": {
    "zh": "按住",
-   "aliases": [],
+   "aliases": [
+    "暂挂"
+   ],
    "cat": "ui"
   },
-  "Press  to Shop": {
+  "Press to Shop": {
    "zh": "按下进行选购",
    "aliases": [],
    "cat": "ui"
@@ -10593,11 +9616,6 @@
   },
   "Ban andLeave Match": {
    "zh": "封禁并离开比赛",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Recent Purchases:": {
-   "zh": "近期购买：",
    "aliases": [],
    "cat": "ui"
   },
@@ -10626,11 +9644,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Quick Buy Starting Point:": {
-   "zh": "快速购买起点：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Start with Current Build": {
    "zh": "以当前的出装开始",
    "aliases": [],
@@ -10656,11 +9669,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Team:": {
-   "zh": "队伍：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Auto-Select": {
    "zh": "自动选择",
    "aliases": [],
@@ -10681,12 +9689,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Add/Remove from Quickbuy with": {
-   "zh": "用添加至/移出快速购买",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Press  to Purchase": {
+  "Press to Purchase": {
    "zh": "按下进行购买",
    "aliases": [],
    "cat": "ui"
@@ -10699,13 +9702,6 @@
   "Marked for Sell": {
    "zh": "标记为出售",
    "aliases": [],
-   "cat": "ui"
-  },
-  "other}": {
-   "zh": "件物品",
-   "aliases": [
-    "名观众"
-   ],
    "cat": "ui"
   },
   "Magazines": {
@@ -10843,11 +9839,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Purchase Order:": {
-   "zh": "购买顺序：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "to Buy": {
    "zh": "进行购买",
    "aliases": [],
@@ -10943,11 +9934,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "At each threshold,  gains:": {
-   "zh": "在每个恩赐会获得：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Ability Unlock or AP": {
    "zh": "技能解锁或技能点",
    "aliases": [],
@@ -10990,18 +9976,8 @@
    ],
    "cat": "ui"
   },
-  "Each Boon Grants:": {
-   "zh": "每个恩赐授予：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Rewards max at Boon 35": {
    "zh": "奖励在35个恩赐时达到上限",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Legend:": {
-   "zh": "图例：",
    "aliases": [],
    "cat": "ui"
   },
@@ -11042,21 +10018,9 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hero Stats:": {
-   "zh": "英雄属性：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Purchased": {
    "zh": "已购买",
    "aliases": [],
-   "cat": "ui"
-  },
-  "Hold": {
-   "zh": "按住",
-   "aliases": [
-    "暂挂"
-   ],
    "cat": "ui"
   },
   "Conditional": {
@@ -11183,18 +10147,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Upgrades From:": {
-   "zh": "升级自：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "owned": {
    "zh": "已拥有",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Owned by:": {
-   "zh": "拥有者：",
    "aliases": [],
    "cat": "ui"
   },
@@ -11205,31 +10159,6 @@
   },
   "See Details": {
    "zh": "查看详情",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Currently Used in:": {
-   "zh": "当前用于：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Upgrades To:": {
-   "zh": "升级为：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Sell Priority:": {
-   "zh": "出售优先级：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Required Extra Slots:": {
-   "zh": "所需额外栏位：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Imbue Suggestion:": {
-   "zh": "加强建议：",
    "aliases": [],
    "cat": "ui"
   },
@@ -11340,11 +10269,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Your Friend Code is:": {
-   "zh": "你的好友代码是：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Play with Friends": {
    "zh": "与好友同玩",
    "aliases": [],
@@ -11390,28 +10314,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Submit": {
-   "zh": "提交",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Your Account Details:": {
-   "zh": "你的账户详情：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Email": {
    "zh": "电子邮件",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "User Name:": {
-   "zh": "用户名：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Password:": {
-   "zh": "密码：",
    "aliases": [],
    "cat": "ui"
   },
@@ -11442,11 +10346,6 @@
   },
   "No Schedule Selected": {
    "zh": "未选择日程",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "/  Games Played": {
-   "zh": "/  已游玩比赛",
    "aliases": [],
    "cat": "ui"
   },
@@ -11504,11 +10403,6 @@
   },
   "Highest Rank": {
    "zh": "最高段位",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "/ Protections Remaining": {
-   "zh": "还剩余/次保护",
    "aliases": [],
    "cat": "ui"
   },
@@ -11571,21 +10465,6 @@
   },
   "+ Wins": {
    "zh": "+胜利",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Eligibility requirements to play Ranked:": {
-   "zh": "游玩天梯模式的资格要求：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "/  wins in Standard": {
-   "zh": "/ 场标准模式胜利",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Calibrating /": {
-   "zh": "校准中 /",
    "aliases": [],
    "cat": "ui"
   },
@@ -11718,21 +10597,9 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Choice  of": {
-   "zh": "选择  /",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Use Re-Roll": {
    "zh": "使用重选",
    "aliases": [],
-   "cat": "ui"
-  },
-  "other} Remaining": {
-   "zh": "剩余次重选",
-   "aliases": [
-    "还剩场 other}"
-   ],
    "cat": "ui"
   },
   "Skip Item": {
@@ -11780,28 +10647,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Update:": {
-   "zh": "更新：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Matchmaking now open 24/7!": {
-   "zh": "现在匹配全天开放！",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Skip": {
-   "zh": "跳过",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Playtester Survey": {
    "zh": "游戏人员调查",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Question  /": {
-   "zh": "第个问题 / 共个",
    "aliases": [],
    "cat": "ui"
   },
@@ -12244,18 +11091,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Invite Code:": {
-   "zh": "邀请代码：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Party is finding a match": {
    "zh": "队伍正在寻找比赛",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Or": {
-   "zh": "或",
    "aliases": [],
    "cat": "ui"
   },
@@ -12414,11 +11251,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Party  other}": {
-   "zh": "组队 other}",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Find Match": {
    "zh": "寻找比赛",
    "aliases": [],
@@ -12468,11 +11300,6 @@
   },
   "Play Bots": {
    "zh": "玩人机对战",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Select your Difficulty:": {
-   "zh": "选择你的难度：",
    "aliases": [],
    "cat": "ui"
   },
@@ -12548,31 +11375,6 @@
   },
   "Edit Roster": {
    "zh": "编辑阵容",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Heroes in roster:": {
-   "zh": "阵容中的英雄：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Priority hero:": {
-   "zh": "优先英雄：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Priority heroes:": {
-   "zh": "优先英雄：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "High Priority hero:": {
-   "zh": "高优先英雄：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "High Priority heroes:": {
-   "zh": "高优先英雄：",
    "aliases": [],
    "cat": "ui"
   },
@@ -12691,13 +11493,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Please Wait": {
-   "zh": "请稍等",
-   "aliases": [
-    "请等待"
-   ],
-   "cat": "ui"
-  },
   "Removing Friend": {
    "zh": "正在移除好友",
    "aliases": [],
@@ -12728,13 +11523,13 @@
    "aliases": [],
    "cat": "ui"
   },
-  "You cannot pause for  seconds.": {
+  "You cannot pause for seconds.": {
    "zh": "你在秒后才能暂停。",
    "aliases": [],
    "cat": "ui"
   },
   "is pausing in ...": {
-   "zh": "将于 秒后暂停……",
+   "zh": "将于秒后暂停……",
    "aliases": [],
    "cat": "ui"
   },
@@ -12755,11 +11550,6 @@
   },
   "Game was automatically resumed.": {
    "zh": "游戏已自动继续。",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Movespeed:": {
-   "zh": "移动速度：",
    "aliases": [],
    "cat": "ui"
   },
@@ -12800,21 +11590,6 @@
   },
   "Bullet and Melee Damage": {
    "zh": "子弹和近战伤害",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "&nbsp;earned": {
-   "zh": "&nbsp;获得了",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "&nbsp;killed themself": {
-   "zh": "&nbsp;击倒了自己",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "&nbsp;lost": {
-   "zh": "&nbsp;失去了",
    "aliases": [],
    "cat": "ui"
   },
@@ -12885,11 +11660,6 @@
   },
   "Total Boons": {
    "zh": "恩赐总数",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Next Rewards:": {
-   "zh": "下个奖励：",
    "aliases": [],
    "cat": "ui"
   },
@@ -13023,11 +11793,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Level  /": {
-   "zh": "等级  /",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Mid-Boss": {
    "zh": "中区头目",
    "aliases": [],
@@ -13150,7 +11915,9 @@
   },
   "Out of Range": {
    "zh": "超出射程",
-   "aliases": [],
+   "aliases": [
+    "超出距离"
+   ],
    "cat": "ui"
   },
   "Protected": {
@@ -13164,16 +11931,6 @@
    "cat": "ui"
   },
   "The Archmother": {
-   "zh": "源祖",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "THE HIDDEN KING": {
-   "zh": "隐王",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "THE ARCHMOTHER": {
    "zh": "源祖",
    "aliases": [],
    "cat": "ui"
@@ -13200,12 +11957,12 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to Unlock an Ability": {
+  "Hold to Unlock an Ability": {
    "zh": "按住解锁技能",
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to Upgrade an Ability": {
+  "Hold to Upgrade an Ability": {
    "zh": "按住升级技能",
    "aliases": [],
    "cat": "ui"
@@ -13332,16 +12089,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "other Damage Sources}}": {
-   "zh": "other个伤害来源}}",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Show More": {
-   "zh": "显示更多",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Damage By Hero": {
    "zh": "英雄造成的伤害",
    "aliases": [],
@@ -13399,16 +12146,6 @@
   },
   "Damage Dealt to All Heroes": {
    "zh": "对全部英雄造成的伤害",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Total Damage:": {
-   "zh": "总伤害：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Hero Damage Taken:": {
-   "zh": "受到的英雄伤害：",
    "aliases": [],
    "cat": "ui"
   },
@@ -13657,16 +12394,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Select Play Mode:": {
-   "zh": "选择游戏模式：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Status:": {
-   "zh": "状态：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Playtest begins": {
    "zh": "游戏开始时间：",
    "aliases": [],
@@ -13674,31 +12401,6 @@
   },
   "Matchmaking open until": {
    "zh": "匹配开放至：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Matchmaking is currently paused:": {
-   "zh": "匹配当前已暂停：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Matchmaking Hours:": {
-   "zh": "匹配时间：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Region:": {
-   "zh": "地区：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Monday - Thursday:": {
-   "zh": "周一至周四：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Friday - Sunday:": {
-   "zh": "周五至周日：",
    "aliases": [],
    "cat": "ui"
   },
@@ -13737,11 +12439,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Learn More": {
-   "zh": "了解更多",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Unavailable while in Low Priority": {
    "zh": "低优先级状态下不可用",
    "aliases": [],
@@ -13772,7 +12469,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to Cancel Search": {
+  "Hold to Cancel Search": {
    "zh": "按住取消搜索",
    "aliases": [],
    "cat": "ui"
@@ -13789,11 +12486,6 @@
   },
   "Pre-loading Map and Shaders": {
    "zh": "正在预载地图和着色器",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Completed  of": {
-   "zh": "已完成 /",
    "aliases": [],
    "cat": "ui"
   },
@@ -14034,16 +12726,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Invite a friend": {
-   "zh": "邀请好友",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "other} playing Deadlock": {
-   "zh": "名好友正在游玩异锁",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Friend Code": {
    "zh": "好友代码",
    "aliases": [],
@@ -14066,16 +12748,6 @@
   },
   "Attempting to connect": {
    "zh": "正在尝试连接",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Uses Left:": {
-   "zh": "剩余次数：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Expires:  at": {
-   "zh": "过期时间：",
    "aliases": [],
    "cat": "ui"
   },
@@ -14154,11 +12826,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Friend Code:": {
-   "zh": "好友代码：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Copy Friend Code": {
    "zh": "复制好友代码",
    "aliases": [],
@@ -14204,16 +12871,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "other} Played": {
-   "zh": "other}场数",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "other} Won": {
-   "zh": "other}场数",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Hero Damage": {
    "zh": "英雄伤害",
    "aliases": [],
@@ -14221,16 +12878,6 @@
   },
   "Objective Damage": {
    "zh": "目标物伤害",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "other} Collected": {
-   "zh": "other}魂魄",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Sort By:": {
-   "zh": "排序方式：",
    "aliases": [],
    "cat": "ui"
   },
@@ -14254,21 +12901,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "A FATE'S TALE:": {
-   "zh": "命运故事：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Backstory:": {
-   "zh": "背景故事：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Create/Edit Build": {
-   "zh": "创建/编辑出装",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Complexity": {
    "zh": "复杂程度",
    "aliases": [],
@@ -14286,11 +12918,6 @@
   },
   "Player Reported!": {
    "zh": "已举报玩家！",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Total Souls": {
-   "zh": "总魂魄数",
    "aliases": [],
    "cat": "ui"
   },
@@ -14316,7 +12943,9 @@
   },
   "Obj Dmg": {
    "zh": "目标伤害",
-   "aliases": [],
+   "aliases": [
+    "目标物伤害"
+   ],
    "cat": "ui"
   },
   "Barrier Absorb": {
@@ -14344,33 +12973,13 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Showing Data By:": {
-   "zh": "按以下方式显示数据：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Team": {
    "zh": "队伍",
    "aliases": [],
    "cat": "ui"
   },
-  "View As:": {
-   "zh": "查看方式：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Value": {
    "zh": "数值",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Graph Type:": {
-   "zh": "图表类型：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Stats at": {
-   "zh": "统计时间：",
    "aliases": [],
    "cat": "ui"
   },
@@ -14441,11 +13050,6 @@
   },
   "Commends": {
    "zh": "称赞",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Account ID:": {
-   "zh": "账户ID：",
    "aliases": [],
    "cat": "ui"
   },
@@ -14698,11 +13302,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Active  other}": {
-   "zh": "场进行中的比赛",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Most Kills": {
    "zh": "最高击败次数",
    "aliases": [],
@@ -14858,18 +13457,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "N/A": {
-   "zh": "无",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Hero Builds": {
    "zh": "英雄出装",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "My Current Build:": {
-   "zh": "我当前的出装：",
    "aliases": [],
    "cat": "ui"
   },
@@ -14903,11 +13492,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Category %number%": {
-   "zh": "类别 %number%",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Edit Item": {
    "zh": "编辑物品",
    "aliases": [],
@@ -14928,16 +13512,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Beginner %hero_name% Build": {
-   "zh": "%hero_name%新手出装",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Default %hero_name% Build": {
-   "zh": "%hero_name%默认出装",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Invalid Persona Name": {
    "zh": "无效的角色名称",
    "aliases": [],
@@ -14945,11 +13519,6 @@
   },
   "Unknown": {
    "zh": "未知",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Created from MatchID %match_id%.": {
-   "zh": "在ID为%match_id%的比赛中创建。",
    "aliases": [],
    "cat": "ui"
   },
@@ -15008,21 +13577,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "New %hero_name% Build": {
-   "zh": "%hero_name%新出装",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Copy of [%name%]": {
-   "zh": "[%name%]的副本",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Copy of %name%": {
-   "zh": "%name%的副本",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Add Category": {
    "zh": "添加类别",
    "aliases": [],
@@ -15053,23 +13607,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "BuildID:": {
-   "zh": "出装ID：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Copied to Clipboard!": {
    "zh": "已复制到剪贴板！",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Version:": {
-   "zh": "版本：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Last Updated:": {
-   "zh": "上次更新时间：",
    "aliases": [],
    "cat": "ui"
   },
@@ -15265,11 +13804,6 @@
   },
   "Browse Builds": {
    "zh": "浏览出装",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Edit Build:": {
-   "zh": "编辑出装：",
    "aliases": [],
    "cat": "ui"
   },
@@ -15563,7 +14097,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to cancel": {
+  "Press to cancel": {
    "zh": "按下取消",
    "aliases": [],
    "cat": "ui"
@@ -15588,11 +14122,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "On Cooldown for s": {
-   "zh": "秒后完成冷却",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Not yet learned": {
    "zh": "尚未学习",
    "aliases": [],
@@ -15600,11 +14129,6 @@
   },
   "Not enough charges": {
    "zh": "充能不足",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Charge delay": {
-   "zh": "充能延迟",
    "aliases": [],
    "cat": "ui"
   },
@@ -15640,11 +14164,6 @@
   },
   "Gun Disabled": {
    "zh": "枪械已禁用",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Out of range": {
-   "zh": "超出距离",
    "aliases": [],
    "cat": "ui"
   },
@@ -15695,11 +14214,6 @@
   },
   "Stunned - Can't Take Action": {
    "zh": "眩晕 - 无法行动",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Not enough energy": {
-   "zh": "能量不足",
    "aliases": [],
    "cat": "ui"
   },
@@ -15853,22 +14367,22 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to climb over obstacles.": {
+  "Hold to climb over obstacles.": {
    "zh": "按住攀爬登上平台。",
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to upgrade your abilities.": {
+  "Hold to upgrade your abilities.": {
    "zh": "按住升级技能。",
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to boost.  Requires Stamina.": {
+  "Press to boost. Requires Stamina.": {
    "zh": "按下加速。需要耐力。",
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to boost arrow speed.": {
+  "Hold to boost arrow speed.": {
    "zh": "按住提升箭速。",
    "aliases": [],
    "cat": "ui"
@@ -16107,9 +14621,7 @@
   },
   "Invert mouse": {
    "zh": "反转鼠标",
-   "aliases": [
-    "反转Y轴"
-   ],
+   "aliases": [],
    "cat": "ui"
   },
   "Zoom-lock": {
@@ -16169,11 +14681,6 @@
   },
   "Bind Anyway": {
    "zh": "仍然绑定",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "+  more": {
-   "zh": "+ 额外个",
    "aliases": [],
    "cat": "ui"
   },
@@ -16272,30 +14779,13 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Jump / mantle": {
-   "zh": "跳跃/攀爬",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Fire": {
    "zh": "开火",
    "aliases": [],
    "cat": "ui"
   },
-  "Zoom / alt-fire": {
-   "zh": "缩放/副射击",
-   "aliases": [
-    "瞄准镜瞄准"
-   ],
-   "cat": "ui"
-  },
   "Reset camera": {
    "zh": "重置视角",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Ping / Chat Wheel": {
-   "zh": "信号/聊天轮盘",
    "aliases": [],
    "cat": "ui"
   },
@@ -16311,11 +14801,6 @@
   },
   "Alternate cast": {
    "zh": "副施放",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Replay death": {
-   "zh": "击倒回放",
    "aliases": [],
    "cat": "ui"
   },
@@ -16396,9 +14881,7 @@
   },
   "Cosmetic 1": {
    "zh": "装饰品 1",
-   "aliases": [
-    "雪球海报"
-   ],
+   "aliases": [],
    "cat": "ui"
   },
   "Replay Next Target": {
@@ -16471,39 +14954,19 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Zipline / rope": {
-   "zh": "滑索 / 绳索",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Toggle mute": {
    "zh": "切换静音",
    "aliases": [],
    "cat": "ui"
   },
-  "Crouch / slide": {
-   "zh": "下蹲/滑行",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Toggle crouch / toggle slide": {
-   "zh": "切换下蹲/切换滑行",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Voice chat (team)": {
    "zh": "语音聊天（队伍）",
-   "aliases": [
-    "按下说话"
-   ],
+   "aliases": [],
    "cat": "ui"
   },
   "Voice chat (party)": {
    "zh": "语音聊天（组队）",
-   "aliases": [
-    "开黑",
-    "按下说话"
-   ],
+   "aliases": [],
    "cat": "ui"
   },
   "Interact": {
@@ -16621,28 +15084,13 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to unmute": {
+  "Press to unmute": {
    "zh": "按下取消静音",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Extra Info": {
-   "zh": "额外信息",
    "aliases": [],
    "cat": "ui"
   },
   "Push to talk": {
    "zh": "按下说话",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Open Shop": {
-   "zh": "打开商店",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Binding conflict:": {
-   "zh": "绑定冲突：",
    "aliases": [],
    "cat": "ui"
   },
@@ -16653,11 +15101,6 @@
   },
   "Key": {
    "zh": "按键",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "is bound to multiple commands:": {
-   "zh": "绑定至多个命令：",
    "aliases": [],
    "cat": "ui"
   },
@@ -16776,7 +15219,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to jump.": {
+  "Press to jump.": {
    "zh": "按下跳跃。",
    "aliases": [],
    "cat": "ui"
@@ -16786,7 +15229,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to crouch.": {
+  "Hold to crouch.": {
    "zh": "按住下蹲。",
    "aliases": [],
    "cat": "ui"
@@ -16876,28 +15319,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Next / Prev": {
-   "zh": "下页/上页",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Fly Down": {
-   "zh": "飞降",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Fly Up": {
-   "zh": "飞升",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Viewers currently spectating": {
    "zh": "观众正在观战",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Target's": {
-   "zh": "目标队伍",
    "aliases": [],
    "cat": "ui"
   },
@@ -16946,12 +15369,12 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Enemy  Tier": {
+  "Enemy Tier": {
    "zh": "敌方级",
    "aliases": [],
    "cat": "ui"
   },
-  "Your  Tier": {
+  "Your Tier": {
    "zh": "我方级",
    "aliases": [],
    "cat": "ui"
@@ -16971,7 +15394,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Vanguard arriving soon to  Lane": {
+  "Vanguard arriving soon to Lane": {
    "zh": "先锋即将抵达",
    "aliases": [],
    "cat": "ui"
@@ -17006,16 +15429,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "in Queue": {
-   "zh": "名玩家在队列中",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "EDIT roster": {
-   "zh": "编辑阵容",
-   "aliases": [],
-   "cat": "ui"
-  },
   "CANCEL search": {
    "zh": "取消搜索",
    "aliases": [],
@@ -17038,11 +15451,6 @@
   },
   "ABANDON Match": {
    "zh": "放弃比赛",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "LEAVE match": {
-   "zh": "离开比赛",
    "aliases": [],
    "cat": "ui"
   },
@@ -17226,11 +15634,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "3 Minutes": {
-   "zh": "3分钟",
-   "aliases": [],
-   "cat": "ui"
-  },
   "8 Minutes": {
    "zh": "8分钟",
    "aliases": [],
@@ -17253,36 +15656,6 @@
   },
   "Completed": {
    "zh": "已完成",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Invalid party size:": {
-   "zh": "队伍人数无效：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Available Times:": {
-   "zh": "可用时段：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Ranked:": {
-   "zh": "天梯：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Mon - Fri:": {
-   "zh": "周一 - 周五：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Sat - Sun:": {
-   "zh": "周六 - 周日：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Daily Schedule:": {
-   "zh": "每日日程：",
    "aliases": [],
    "cat": "ui"
   },
@@ -17341,11 +15714,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Badge Levels:": {
-   "zh": "徽章等级：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Global Leaderboards": {
    "zh": "全球排行榜",
    "aliases": [],
@@ -17378,11 +15746,6 @@
   },
   "Games Played": {
    "zh": "已游玩场比赛",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Match History:": {
-   "zh": "比赛历史记录：",
    "aliases": [],
    "cat": "ui"
   },
@@ -17513,11 +15876,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Load More": {
-   "zh": "载入更多",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Extra Slots": {
    "zh": "额外栏位",
    "aliases": [],
@@ -17525,11 +15883,6 @@
   },
   "Imbue": {
    "zh": "加强",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "NEW": {
-   "zh": "全新",
    "aliases": [],
    "cat": "ui"
   },
@@ -17545,11 +15898,6 @@
   },
   "Purchasing Disabled due to Combat": {
    "zh": "战斗时禁用购买",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Owned": {
-   "zh": "已拥有",
    "aliases": [],
    "cat": "ui"
   },
@@ -17703,11 +16051,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Minimum   other} required to queue": {
-   "zh": "最少需要名 other}才能进入匹配",
-   "aliases": [],
-   "cat": "ui"
-  },
   "HEROES IN ROSTER": {
    "zh": "阵容中有名英雄",
    "aliases": [],
@@ -17798,16 +16141,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "/ Ready": {
-   "zh": "/ 就绪",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Hero Already in Rosters:": {
-   "zh": "英雄已在阵容中：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "New Hero Priority Token": {
    "zh": "新英雄优先币",
    "aliases": [],
@@ -17815,21 +16148,6 @@
   },
   "Available": {
    "zh": "可用",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Last Hits:": {
-   "zh": "正补数：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Orbs Secured:": {
-   "zh": "稳获的光球：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Orbs Denied:": {
-   "zh": "回收的光球：",
    "aliases": [],
    "cat": "ui"
   },
@@ -17938,11 +16256,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hero to spawn:": {
-   "zh": "要重生的英雄：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "+As Enemy": {
    "zh": "+ 作为敌方",
    "aliases": [],
@@ -17970,16 +16283,6 @@
   },
   "Dev Commands": {
    "zh": "开发者命令",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "CHANGE HERO": {
-   "zh": "更换英雄",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "CHANGE TEAM": {
-   "zh": "更换队伍",
    "aliases": [],
    "cat": "ui"
   },
@@ -18048,11 +16351,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "/  Souls": {
-   "zh": "/ 个魂魄",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Power Up your Hero": {
    "zh": "提升英雄的力量",
    "aliases": [],
@@ -18085,11 +16383,6 @@
   },
   "Test out Controls": {
    "zh": "测试控制",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "then": {
-   "zh": "再",
    "aliases": [],
    "cat": "ui"
   },
@@ -18133,7 +16426,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to unlock new abilities.": {
+  "Hold to unlock new abilities.": {
    "zh": "按住解锁新技能。",
    "aliases": [],
    "cat": "ui"
@@ -18143,17 +16436,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  to Unlock": {
-   "zh": "按住后解锁",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Press  to Cast": {
-   "zh": "按下进行施法",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Hold  and click to Upgrade": {
+  "Hold and click to Upgrade": {
    "zh": "按住再点击可以升级",
    "aliases": [],
    "cat": "ui"
@@ -18163,7 +16446,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Hold  Ability Points.": {
+  "Hold Ability Points.": {
    "zh": "按住分配技能点数。",
    "aliases": [],
    "cat": "ui"
@@ -18178,12 +16461,7 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to cast your Ultimate.": {
-   "zh": "按下施放终极技能。",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "There are  enemy troopers remaining.": {
+  "There are enemy troopers remaining.": {
    "zh": "还剩下个敌方步兵。",
    "aliases": [],
    "cat": "ui"
@@ -18200,11 +16478,6 @@
   },
   "Defeat the Enemy Guardian": {
    "zh": "击败敌方卫士",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Create a Build for": {
-   "zh": "为打造出装",
    "aliases": [],
    "cat": "ui"
   },
@@ -18383,11 +16656,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Let's Hide Here": {
-   "zh": "我们在这躲躲",
-   "aliases": [],
-   "cat": "ui"
-  },
   "It's dangerous here...": {
    "zh": "这里很危险…",
    "aliases": [],
@@ -18520,31 +16788,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "To (ALL):": {
-   "zh": "对（所有人）：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "To (ALLIES):": {
-   "zh": "对（友军）：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "To (SPECTATORS):": {
-   "zh": "对（观众）：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "To (PARTY):": {
-   "zh": "对（队伍）：",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "is Missing": {
-   "zh": "不见了",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Missing Yellow": {
    "zh": "黄路敌人消失",
    "aliases": [],
@@ -18665,16 +16908,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Wait/Hold Up": {
-   "zh": "等等/等一下",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Wait": {
-   "zh": "等待",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Good Game": {
    "zh": "比赛很精彩",
    "aliases": [],
@@ -18775,11 +17008,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "I can heal you": {
-   "zh": "我可以治疗你，",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Have Heal": {
    "zh": "有治疗",
    "aliases": [],
@@ -18800,11 +17028,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Responding to:": {
-   "zh": "回复给：",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Allies": {
    "zh": "队友",
    "aliases": [],
@@ -18812,11 +17035,6 @@
   },
   "System": {
    "zh": "系统",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Headed this way": {
-   "zh": "往这边来了",
    "aliases": [],
    "cat": "ui"
   },
@@ -18842,16 +17060,6 @@
   },
   "Cancel That": {
    "zh": "算了",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "I see": {
-   "zh": "我看到",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "I see  with  health": {
-   "zh": "我看到点生命的",
    "aliases": [],
    "cat": "ui"
   },
@@ -18900,18 +17108,8 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Follow me": {
-   "zh": "跟着我",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Nice work": {
    "zh": "干得不错",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Good job": {
-   "zh": "干得漂亮",
    "aliases": [],
    "cat": "ui"
   },
@@ -18940,11 +17138,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "get back!": {
-   "zh": "快回来！",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Let's take their Patron": {
    "zh": "去打他们的守护神",
    "aliases": [],
@@ -18957,31 +17150,6 @@
   },
   "Let's take out their core": {
    "zh": "去打他们的核心",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "headed to Yellow": {
-   "zh": "往黄路走了",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "headed to Blue": {
-   "zh": "往蓝路走了",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "headed to Green": {
-   "zh": "往绿路走了",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Let's take out": {
-   "zh": "一起去干掉",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Stun !": {
-   "zh": "快晕住！",
    "aliases": [],
    "cat": "ui"
   },
@@ -19005,58 +17173,13 @@
    "aliases": [],
    "cat": "ui"
   },
-  "is ready!": {
-   "zh": "准备就绪！",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "is on cooldown for s": {
-   "zh": "还要冷却秒",
-   "aliases": [],
-   "cat": "ui"
-  },
   "I'm Back!": {
    "zh": "我回来了！",
    "aliases": [],
    "cat": "ui"
   },
-  "is missing": {
-   "zh": "消失",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Affirmative": {
    "zh": "没问题",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "is inside the garage": {
-   "zh": "在车库里面",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "is on top of mid": {
-   "zh": "在中路上面",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "inside mid": {
-   "zh": "在地库里",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "is on the bridge": {
-   "zh": "在桥上",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "is on the roof": {
-   "zh": "在屋顶上",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Careful!  has": {
-   "zh": "小心！有",
    "aliases": [],
    "cat": "ui"
   },
@@ -19090,22 +17213,22 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to watch matches": {
+  "Press to watch matches": {
    "zh": "按下观看比赛",
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to see heroes": {
+  "Press to see heroes": {
    "zh": "按下浏览英雄",
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to view resources": {
+  "Press to view resources": {
    "zh": "按下查看资源",
    "aliases": [],
    "cat": "ui"
   },
-  "Press  to leave Deadlock": {
+  "Press to leave Deadlock": {
    "zh": "按下离开《异锁》",
    "aliases": [],
    "cat": "ui"
@@ -19235,11 +17358,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "Exit Game": {
-   "zh": "退出游戏",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Players Connecting": {
    "zh": "玩家正在连接",
    "aliases": [],
@@ -19265,11 +17383,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "You have   other} to cast": {
-   "zh": "可以投出票",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Your Total": {
    "zh": "总计票数",
    "aliases": [],
@@ -19282,11 +17395,6 @@
   },
   "Vote": {
    "zh": "投票",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "other} to cast": {
-   "zh": "可以投出票",
    "aliases": [],
    "cat": "ui"
   },
@@ -19307,11 +17415,6 @@
   },
   "Round Complete": {
    "zh": "回合结束",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Round Begins in:": {
-   "zh": "回合即将开始：",
    "aliases": [],
    "cat": "ui"
   },
@@ -19505,11 +17608,6 @@
    "aliases": [],
    "cat": "ui"
   },
-  "OBJ Dmg": {
-   "zh": "目标物伤害",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Level 1 2": {
    "zh": "1 级 2",
    "aliases": [],
@@ -19696,11 +17794,6 @@
   },
   "Gift wrapped": {
    "zh": "包装成了礼物",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Gift sent to %partner%": {
-   "zh": "礼物已发送至%partner%",
    "aliases": [],
    "cat": "ui"
   },
@@ -19903,11 +17996,6 @@
    ],
    "cat": "ui"
   },
-  "Received a gift from %partner%": {
-   "zh": "从 %partner% 处获得一份礼物",
-   "aliases": [],
-   "cat": "ui"
-  },
   "Received by entering product code": {
    "zh": "通过输入产品代码而获得",
    "aliases": [],
@@ -19940,11 +18028,6 @@
   },
   "Purchased with points": {
    "zh": "使用积分购买",
-   "aliases": [],
-   "cat": "ui"
-  },
-  "Subscription/Seasonal Item Grant": {
-   "zh": "订阅/活动物品授予",
    "aliases": [],
    "cat": "ui"
   },

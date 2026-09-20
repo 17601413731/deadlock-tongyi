@@ -42,14 +42,46 @@
 	var MAX_MODEL_ROWS = 12;
 	// 同一行翻译失败后最多自动重试几次（桥不通时避免同一句反复占队列）
 	var MAX_ROW_RETRY = 2;
+	// ---- 别人发来的消息（英→中）的"翻译中"提示 --------------------------------
+	// 为什么需要：这条路上中位延迟 1.2 秒（见 dlchat/bridge/server.py 里的实测），
+	// 屏幕上一次来几条还要串行排队 —— 玩家看到的就是"英文气泡静静挂在那儿，
+	// 一两秒后中文突然冒出来"，没有任何反馈。打字那一路（中→英，169ms）一直有
+	// "翻译中…"提示，这条没有，体验上是明显的不对称。
+	//
+	// 参数取值理由：
+	//   · 延迟 0.4 秒才显示：缓存命中是 0ms（桥启动时还预热了词典整句），
+	//     无脑显示会让快的那一批闪一下。0.4 秒既能盖住"慢"的观感，又不会闪。
+	//   · 失败提示停 6 秒：比状态行（5 秒）略长，因为它就在那条消息上，看得见。
+	//   · 占位文字用 "···"：不带会动的动画（Panorama 的动画不一定生效），
+	//     中文/英文都读得通。
+	var PENDING_SHOW_DELAY = 0.4;      // 超过这么久还没译文才显示"翻译中"
+	var PENDING_TEXT = "···";          // 占位文字
+	var FAIL_SHOW_SECONDS = 6;         // "翻译失败"停留时长（之后恢复正常外观）
+	var PENDING_SWEEP_MAX = 12;        // 每轮最多处理几行（屏幕上也放不下更多）
+	var PENDING_SETTLE_BUMP = 5;       // 比请求超时多留几秒才判"卡死"
 	// 首次扫到一个聊天容器时，只处理最后几条：历史消息没必要一次翻一大堆
 	// （串行队列，一次翻 10 条 = 十几秒的等待）
 	var BOOTSTRAP_TAIL = 3;
 
-	var TRIGGER = "   ";               // 触发转换：连按三下空格
+	var TRIGGER = "   ";               // 触发转换：连按三下空格（设置里可切成两下）
 	var CJK_RE = /[\u3400-\u9fbf\uf900-\ufaff\uff00-\uffef]/;
 	var ASCII_LETTER_RE = /[A-Za-z]/;
-	var DEBUG = true;                  // 诊断日志推给桥（scripts/mod_log.py 可看）
+	// 西里尔/希腊字母：Deadlock 的亚服/欧服混排语言里俄语很常见（社区调研里
+	// 有整屋子俄语玩家的吐槽帖）。以前这种消息被 looksEnglish 判成"非英文"
+	// 直接丢掉 —— 玩家看到的是"这条消息永远不翻"，属于静默失败。
+	var CYRILLIC_RE = /[\u0400-\u04ff]/;
+	var GREEK_RE = /[\u0370-\u03ff]/;
+	// 为什么留这条：Panorama 脚本没法直接看 console，出问题时只能靠"把日志推到桥"。
+	// 但**每一条日志都是一次串行往返**（通道是单槽的：一次页面导航 + title 轮询），
+	// 一条消息翻译成功能产生 2 条日志 ⇒ 3 条消息 ≈ 6 次导航，通道开销直接翻倍。
+	// 所以默认关；联调时把它改成 true 再重新编译。
+	var DEBUG = false;                 // 诊断日志推给桥（scripts/mod_log.py 可看）
+	// 中→英失败的退避与重试预算（秒）。为什么必须有：
+	// 失败时输入框里的中文**连同尾随空格**原样留着，而输入框每 0.1 秒扫一次 ——
+	// 没有预算就是每 0.1 秒一个请求的死循环，还会一直占着 fast 通道把
+	// 屏幕上的聊天行全堵住（接收路径的重试预算是 MAX_ROW_RETRY，发送路径以前没有）。
+	var SEND_MAX_FAILS = 2;            // 同一句连续失败几次后停止自动重试
+	var SEND_BACKOFF = [0, 2.0, 5.0];  // 第 n 次失败后的冷却秒数
 
 	// ---------------------------------------------------------------- 小工具
 	var tickCount = 0;
@@ -60,14 +92,14 @@
 
 	// compact 设置响应用的是**短键**：那个包要经 HTML 文档标题传回游戏，长度是硬约束
 	// （实测本地长模型名已经占到 378/380 字符）。桥那边为了给用户自己的模型名腾地方，
-	// 把字段名压成了一个词：recv/send/disp/out/hover/trig/keep/gloss/prv。
+	// 把字段名压成了一个词：recv/send/disp/out/hover/trig/keep/gloss/prv/ctx。
 	// 这里集中翻译一次，别在业务代码里到处出现 c.recv 这种天书。
 	function compact(res) {
 		res = res || {};
 		return {
 			recv: res.recv, send: res.send, disp: res.disp, out: res.out,
 			hover: res.hover, trig: res.trig, keep: res.keep, gloss: res.gloss,
-			prv: res.prv, sep: res.sep, model: res.model,
+			prv: res.prv, sep: res.sep, model: res.model, ctx: res.ctx,
 			// 下面这些在响应被裁剪时会缺席，读的时候一律带默认值
 			persisted: res.persisted, req: res.req, hit: res.hit,
 			latIn: res.latIn, latOut: res.latOut, vram: res.vram,
@@ -218,7 +250,8 @@
 			"Text", "Ping", "ChatBubble", "TextContainer", "bubble_bg", "ChatLinesWrapper",
 			"ChatLineContainer", "ChatLine", "ChatPersona", "SenderName", "ChannelName",
 			"SenderLocalClient", "IsSelf", "DLChatTranslation", "DLChatOriginal",
-			"DLChatBilingual", "DLChatTranslatedText", "DLChatChatInline"];
+			"DLChatBilingual", "DLChatTranslatedText", "DLChatChatInline",
+			"DLChatPending", "DLChatFailed"];
 		var hit = [];
 		try { if (p.id) hit.push("#" + p.id); } catch (e) {}
 		for (var i = 0; i < known.length; i++) {
@@ -374,6 +407,11 @@
 		// 不然行被游戏回收显示新消息时，它还留着上一条的原文，会被当成"这一行的文字"
 		// 拼进去（离线测试台抓到过："need urn go rosh"）。
 		if (hasClass(panel, "DLChatOriginal")) return "";
+		// "翻译中"占位（.DLChatPending）和"翻译失败"提示（.DLChatFailed）同上，
+		// 而且更要紧：它们是**加在原文后面**的，被读成正文的后果不是显示难看，
+		// 而是下一轮扫描拿 "he is low ···" / "he is low 翻译失败" 当原文送去翻译
+		// （离线测试台两个类各抓到过一次）。
+		if (hasClass(panel, "DLChatPending") || hasClass(panel, "DLChatFailed")) return "";
 		var own = inlineEntryFor(panel);
 		if (own && own.cell === panel && typeof own.original === "string") return own.original;
 		var rec = inlineCellInside(panel);
@@ -384,6 +422,12 @@
 	function looksChinese(s) { return CJK_RE.test(s); }
 
 	function looksEnglish(s) { return !CJK_RE.test(s) && ASCII_LETTER_RE.test(s); }
+
+	// 别的语言的字面（主要是俄语，亚服/欧服混排很常见）。
+	// 返回一个给桥看的语言提示：桥按它选提示词，而不是把俄语当英文翻。
+	function looksSlavic(s) {
+		return CYRILLIC_RE.test(s) ? "ru" : (GREEK_RE.test(s) ? "el" : "");
+	}
 
 	// ---------------------------------------------------------------- 通道探测
 	// 两条通道，优先直连：
@@ -606,6 +650,10 @@
 			// 先只暴露两种空格触发 —— 不给用户摆一个按了没反应的选项。
 			trigger: ["triple_space", "double_space"],
 			keep_alive: ["5m", "30m", "60m", "-1"],
+			// 上下文轮数：短句消歧用（"on him"/"no" 这类没有上句就没法翻），
+			// 但轮数越多 token 成本越高、也越容易把上一句的主语带进来。
+			// 只给 0/1/2 三档：再多对聊天翻译没有收益。
+			context_rounds: [0, 1, 2],
 			// 只放已验证能用的两条：本地 Ollama / DeepSeek 云端
 			provider: ["local", "deepseek"]
 		},
@@ -620,7 +668,9 @@
 			trigger: { triple_space: "三下空格", double_space: "两下空格",
 				ctrl_enter: "Ctrl+Enter" },
 			keep_alive: { "5m": "5 分钟", "30m": "30 分钟", "60m": "60 分钟",
-				"-1": "常驻不卸载" }
+				"-1": "常驻不卸载" },
+			// 数字键在对象里会变成字符串，两种写法都查一下
+			context_rounds: { "0": "不带上文", "1": "带 1 轮（推荐）", "2": "带 2 轮" }
 		},
 
 		// 选项名 -> 真正拼进输入框的字符串（和桥的 SEPARATOR_TEXT 对齐）
@@ -697,6 +747,9 @@
 				(this.LABEL.separator[s.separator] || s.separator));
 			this.setText("DLChatSet_keep_l",
 				(this.LABEL.keep_alive[s.keep_alive] || s.keep_alive));
+			this.setText("DLChatSet_ctx_l",
+				(this.LABEL.context_rounds[String(s.context_rounds)]
+					|| (String(s.context_rounds) + " 轮")));
 			var pname = this.providerName();
 			this.setText("DLChatSet_provider_l",
 				(this.PROVIDER.label[pname] || pname));
@@ -853,6 +906,9 @@
 				provider: this.PROVIDER.byCode[c.prv] || "local",
 				// 分隔符：桥传单字母码 p/f/s，认不出就用半角竖线
 				separator: this.SEP_NAME[c.sep] || "pipe",
+				// 上下文轮数（短句消歧）。缺省 1：老桥没有这个字段时行为要和
+				// 新的默认值一致，不能变成 0（否则"升级后突然不带上下文了"）。
+				context_rounds: (c.ctx === 0 || c.ctx) ? Number(c.ctx) : 1,
 				model: c.model
 			};
 		},
@@ -1187,6 +1243,171 @@
 				+ (detail.length ? " | detail=" + detail.join(" ") : "");
 		};
 
+		// 给测试台的探针：**用真正扫描时那个入口**（readMessageRow）读一行，而不是
+		// 自己按 class 猜。scanAllSurfaces 判定"这一行是什么文字"用的就是它，
+		// 所以占位有没有污染正文，只有它能给出实话。
+		// （老钩子 DLChatSelfTestProbe 把 surface 硬写成 "chat"，对气泡行会读错地方。）
+		function probeRowInfo(row) {
+			try {
+				var info = readMessageRow(row, null);
+				if (!info) return "info=null";
+				return "surface=" + info.surface + " text=" + JSON.stringify(info.text)
+					+ " skip=" + JSON.stringify(shouldSkipRow(info));
+			} catch (e) { return "probe_threw:" + e; }
+		}
+
+		// "翻译中"占位的自检：别人发来的消息要等 1 秒多才有译文，中间这一段
+		// 屏幕上原本什么都不发生。这里把**真实的那条路**跑一遍（不是复制一套逻辑）：
+		//   ① 延迟没到 -> 不许显示（缓存命中 0ms，无脑显示会闪）
+		//   ② 延迟到了 -> 占位要出现，而且**不能被当成消息原文**读回去
+		//   ③ 译文到了   -> 原地换成译文，占位收干净
+		//   ④ 行被回收   -> 旧占位收掉，按新消息重来
+		// 时间靠把 pendingSince 往前拨来推进（测试台的 $.Schedule 桩不带时间）。
+		// keepRow=true 时不模拟"行被回收"，留给测试台接着验别的（比如再扫一轮）。
+		globalThis.DLChatSelfTestPending = function (row, text, chinese, keepRow) {
+			try {
+				var info = readMessageRow(row, "chat");
+				if (!info) return "info=null";
+				cacheForget(text);                       // 别让别的用例灌进来的缓存干扰
+				var rec = rowRecord(row);
+				if (!rec) {
+					rec = {
+						panel: row, contents: info.contents, textLabel: info.textLabel || null,
+						original: info.text, own: false, quick: false, surface: info.surface,
+						chinese: "", orig: null, trans: null, logged: true,
+						applied: false, pending: false, retry: 0,
+						pendingLabel: null, pendingShown: false, pendingShownText: null,
+						pendingSince: 0, settleBy: 0, queuedAt: 0, inlinePending: false,
+						failed: false, fails: 0, failedMarked: false, failedAt: 0
+					};
+					rows.push(rec);
+				}
+				var out = [];
+				translateRowText(rec, text);              // 真实入口：进 pending、发请求
+				pendingTick(nowSeconds());                // 延迟没到
+				out.push("early=" + (rec.pendingShown ? "shown" : "none"));
+				rec.pendingSince = 0;                     // 把时钟往前拨到"早就该显示了"
+				pendingTick(nowSeconds());
+				out.push("delayed=" + (rec.pendingShown ? "shown" : "none"));
+				out.push("label=" + JSON.stringify(readText(rec.pendingLabel)));
+				out.push("cls=" + hasClass(rec.pendingLabel, "DLChatPending"));
+				// 内联底色：气泡那一路全靠它（官方 HUD 的长选择器不覆盖我们注入的标签）。
+				// 顺手验"占位和真译文的底色确实不一样" —— 一样的话玩家分不出翻没翻好。
+				var pendBg = "";
+				try { pendBg = (rec.pendingLabel && rec.pendingLabel.style) ? rec.pendingLabel.style.backgroundColor : ""; } catch (e) {}
+				out.push("bg=" + JSON.stringify(pendBg));
+				// 这一格（聊天窗就是游戏自己的正文格）现在长什么样：测试台拿它确认
+				// "英文 | ···"。要在这里报，**不能**等回收那一步之后再读（那时已被改成新消息）。
+				out.push("cell=" + JSON.stringify(readText(rec.textLabel)));
+				// 占位绝不能进"消息原文"：否则下一轮会拿 "he is low ···" 去翻译。
+				// clean 查的是 collectText，probe 查的是**真正扫描用的** readMessageRow
+				// （两个都得干净：collectText 是它的一部分，但只有 probe 能看出
+				// "占位挂在行容器下、被祖先那一层拼进去"这种漏网）。
+				out.push("clean=" + (collectText(rec.panel) === text));
+				out.push("probe={" + probeRowInfo(rec.panel) + "}");
+				applyTranslation(rec, chinese);           // 译文到达
+				out.push("after=" + JSON.stringify(readText(rec.trans)));
+				out.push("afterCls=" + hasClass(rec.trans, "DLChatPending"));
+				// 真译文必须把 .DLChatTranslation 加回来（两个类是互斥的，见 setPendingVisual）
+				out.push("afterTransCls=" + hasClass(rec.trans, "DLChatTranslation"));
+				var afterBg = "";
+				try { afterBg = (rec.trans && rec.trans.style) ? rec.trans.style.backgroundColor : ""; } catch (e) {}
+				out.push("afterBg=" + JSON.stringify(afterBg));
+				out.push("afterClean=" + (collectText(rec.panel) === text));
+				out.push("afterProbe={" + probeRowInfo(rec.panel) + "}");
+				out.push("samePanel=" + (rec.pendingLabel === rec.trans));
+				if (keepRow === "keep") return out.join(" ");
+				// 行被游戏回收去显示别的消息：旧占位必须收掉，否则会挂在新消息下面
+				var cell = rec.textLabel;
+				if (isValid(cell)) writeText(cell, "push now");
+				pendingTick(nowSeconds());
+				out.push("recycledGone=" + !rec.pendingShown);
+				out.push("recycledRead=" + JSON.stringify(readRowText(cell)));
+				return out.join(" ");
+			} catch (e) {
+				return "pending_threw:" + e;
+			}
+		};
+
+		// 翻不出来的自检：原来这种情况是**完全没有反馈**（英文留在那儿，什么都不说）。
+		// 现在至少在这一行上标一下，而且失败提示不能被读成消息原文。
+		globalThis.DLChatSelfTestPendingFail = function (row, text) {
+			try {
+				var info = readMessageRow(row, "chat");
+				if (!info) return "info=null";
+				cacheForget(text);
+				var rec = rowRecord(row);
+				if (!rec) {
+					rec = {
+						panel: row, contents: info.contents, textLabel: info.textLabel || null,
+						original: info.text, own: false, quick: false, surface: info.surface,
+						chinese: "", orig: null, trans: null, logged: true,
+						applied: false, pending: false, retry: 0,
+						pendingLabel: null, pendingShown: false, pendingShownText: null,
+						pendingSince: 0, settleBy: 0, queuedAt: 0, inlinePending: false,
+						failed: false, fails: 0, failedMarked: false, failedAt: 0
+					};
+					rows.push(rec);
+				}
+				translateRowText(rec, text);
+				rec.pendingSince = 0;
+				pendingTick(nowSeconds());
+				markRowFailed(rec, "timeout");            // 等价于"请求卡死 / 重试预算用完"
+				pendingTick(nowSeconds());
+				var out = [];
+				out.push("failed=" + rec.failedMarked);
+				out.push("text=" + JSON.stringify(readText(rec.pendingLabel)));
+				out.push("cls=" + hasClass(rec.pendingLabel, "DLChatFailed"));
+				out.push("clean=" + (collectText(rec.panel) === text));
+				rec.failedAt = nowSeconds() - FAIL_SHOW_SECONDS - 1;   // 提示停留时间到
+				pendingTick(nowSeconds());
+				out.push("cleared=" + !rec.failedMarked);
+				// 提示收掉之后这一格还剩什么：聊天窗不能留一个孤零零的分隔符（"英文 |"）
+				out.push("cellAfter=" + JSON.stringify(readText(rec.textLabel)));
+				return out.join(" ");
+			} catch (e) {
+				return "pending_fail_threw:" + e;
+			}
+		};
+
+		// 错误文案：玩家看到的那句话，必须永远是可读的原因。
+		// 血泪教训：曾经把整个响应对象传给 shortError()，String({}) -> "[object Object]"，
+		// 游戏里显示"翻译失败（[object Object]）"——等于没给任何排查线索。
+		// 这里把"传对象 / 传空 / 传机器码 / 传中文说明"四种形态都钉住。
+		globalThis.DLChatSelfTestErrors = function () {
+			var out = [];
+			function step(name, fn) {
+				try { out.push(name + "=" + fn()); }
+				catch (e) { out.push(name + ":FAIL(" + e + ")"); }
+			}
+			// 1) 完整响应对象（就是出 bug 的那次调用形态）
+			step("objectRes", function () {
+				return shortError({ ok: false, error: "API Key 无效或未设置" });
+			});
+			// 2) 对象里没有可读原因
+			step("objectNoReason", function () {
+				return shortError({ ok: false });
+			});
+			// 3) 空的 / 未定义的响应（桥没回包）
+			step("emptyObj", function () { return shortError({}); });
+			step("undef", function () { return shortError(undefined); });
+			step("nullRes", function () { return shortError(null); });
+			// 4) 机器码要翻译成人话
+			step("codeTimeout", function () { return shortError("timeout_no_response"); });
+			step("codeTooLong", function () { return shortError("payload_too_long"); });
+			// 5) 桥返回的中文说明要原样给出（不能砍掉"去哪配 Key"）
+			step("chineseHint", function () {
+				return shortError("API Key 无效或未设置（在 http://localhost:8791/settings 里填）");
+			});
+			// 6) 断言：任何形态都不许出现 [object Object]
+			var shapes = [{ ok: false, error: "x" }, {}, undefined, null, 0, "internal_error: boom"];
+			for (var i = 0; i < shapes.length; i++) {
+				var got = String(shortError(shapes[i]));
+				if (got.indexOf("[object") !== -1) out.push("BAD_objectString=" + got);
+			}
+			return out.join(" ");
+		};
+
 		// 本轮新增的三块逻辑也拉进离线测试台：都是"纯计算"，不需要桥在线。
 		//   · 输入正文的清洗（换行/连续空格）
 		//   · 译文缓存（同一句只翻一次）
@@ -1321,6 +1542,9 @@
 			// 翻错了/超时了之后的补救：重译聊天区里最近一条英文
 			globalThis.DLChatRetranslateLast = safe("重译最近一条", function () {
 				retranslateLast();
+			});
+			globalThis.DLChatShowHistory = safe("最近译文", function () {
+				showHistoryPage();
 			});
 			globalThis.DLChatTestSettings = safe("试翻", function () {
 				ui.testText("测试中…（本地首次要等模型载入；云端要等一次网络往返）");
@@ -1857,9 +2081,16 @@
 
 	// ---------------------------------------------------------------- 失败留痕
 	var lastFailure = { text: "", at: 0 };
+	// 同一批聊天行会一起失败（桥不通时屏幕上几条同时超时），状态行和面板各刷一遍太吵。
+	// 同一个原因在 NOTE_DEDUP_SECONDS 内只报一次；换了原因或者过了窗口照常报。
+	var NOTE_DEDUP_SECONDS = 6;
+	var lastNote = { text: "", at: 0 };
 
 	function failureReason(res, fallback) {
 		if (res && res.error) return String(res.error);
+		// 回包被通道截断时 parseLoose 只能给 {ok:true, partial:true}：
+		// 没有 error 字段，以前一律落到"未知原因"——玩家拿着这句话没法排查。
+		if (res && res.partial) return "回包被截断（内容太长），已按不完整处理";
 		if (!res) return "桥没响应（超时）";
 		return fallback || "未知原因";
 	}
@@ -1867,6 +2098,15 @@
 	function noteFailure(direction, res, source) {
 		var why = failureReason(res);
 		lastFailure = { text: direction + " 失败：" + why, at: nowSeconds() };
+		var key = direction + "|" + why;
+		var now = nowSeconds();
+		if (key === lastNote.text && now - lastNote.at < NOTE_DEDUP_SECONDS) {
+			// 同一个原因刚报过：日志照记（排查要看全量），状态行/面板不再重复刷
+			log("failed_dup:" + direction + ":" + String(source || "").substring(0, 60),
+				{ error: why });
+			return;
+		}
+		lastNote = { text: key, at: now };
 		// 状态行给人话，但**不再砍成 24 个字符**：桥返回的中文说明里
 		// "去哪配 Key"这种关键信息正好在尾巴上（短错误码仍然缩写）。
 		status.show(shortError(why), 8);
@@ -1878,6 +2118,7 @@
 	function clearFailure() {
 		if (!lastFailure.text) return;
 		lastFailure = { text: "", at: 0 };
+		lastNote = { text: "", at: 0 };     // 失败已经过去：同一个原因下次要能重新报出来
 		ui.renderFailure();
 	}
 
@@ -2027,7 +2268,10 @@
 		if (isOwnMessageByText(info.text)) return "own_text";
 		if (info.text.charAt(0) === "/") return "command";
 		if (info.text.replace(/\s/g, "").length < 2) return "too_short";
-		if (!looksEnglish(info.text)) return "not_english";
+		// 非拉丁字母的语言（俄语/希腊语）也要翻：以前 looksEnglish 把西里尔语
+		// 判成"非英文"直接丢掉 → 玩家看到的是"这条消息永远不翻"（静默失败）。
+		// 现在交给桥按语言提示处理，桥的提示词会说明源语言不是英文。
+		if (!looksEnglish(info.text) && !looksSlavic(info.text)) return "not_translatable";
 		if (channel.hints.receiveEnabled === false) return "receive_disabled";
 		return "";
 	}
@@ -2076,9 +2320,234 @@
 		return null;
 	}
 
+	// ---------------------------------------------------------------- "翻译中"占位
+	// 别人发来的消息要等 1 秒多才有译文（打字那一路只有 0.17 秒），中间那一段
+	// 屏幕上什么都不发生。这里给这一行补一个**弱化的占位**，翻好之后原地换成译文，
+	// 让"正在翻"和"翻完了"一眼分得出来。
+	//
+	// 三条铁律（都是踩过的坑换来的）：
+	//   ① **绝不新建第二个标签**：替换模式的兜底靠 findTextLabel 的"子树里唯一一格
+	//      有字的 Label"，多一个节点就会让它找不到目标。所以占位和译文**共用同一个面板**
+	//      （rec.trans / 聊天窗那一格）。
+	//   ② 占位和行内拼接都必须能被 readRowText 识破（见那里的 .DLChatPending 分支），
+	//      否则占位文字会被当成消息原文再翻一遍。
+	//   ③ 延迟显示：缓存命中是 0ms，慢了才显示 —— 否则每条消息都要闪一下。
+
+	// 报文流：占位的显示/隐藏都不动 rec.chinese / rec.applied（那是"已翻好"的语义），
+	// 两者之间的一致性全靠 rec.pending / rec.pendingShown 这一对。
+	function hidePendingLabel(rec) {
+		rec.pendingShownText = null;
+		if (!rec || !rec.pendingShown) return;
+		if (rec.inlinePending && isValid(rec.pendingLabel)) {
+			// 聊天窗行内模式：占位是**写进游戏自己那格正文**的（"英文 | ···"），
+			// 而且这一格同时供 readRowText 还原原文。退场时必须两步一起做：
+			// 把格子还原、再摘掉 inline 记录。只删记录不还原的话，读行会读到
+			// "英文 | ···"，被判成"这一行换内容了"再翻一遍（占位符被送去翻译）。
+			//
+			// ⚠ 还原成**纯原文**，不保留分隔符。踩过的坑：还原成 "英文 |" 时，
+			// 万一接下来没有再显示占位（失败重试预算用完、或失败提示到点收掉），
+			// 这一格就留着一个悬空的分隔符；下一轮扫描读到 "need urn |"，把它当成
+			// **新的消息原文**又排进翻译（离线测试台的 queued 里抓到过 "need urn |"）。
+			var before = readText(rec.pendingLabel);
+			if (before === rec.original + (separatorText() || " | ") + PENDING_TEXT
+				|| before === rec.original + (separatorText() || " | ") + "翻译失败") {
+				writeText(rec.pendingLabel, rec.original);
+			}
+			inlineForget(rec.panel);
+			setClass(rec.panel, "DLChatChatInline", false);
+			rec.inlinePending = false;
+		} else if (isValid(rec.pendingLabel)) {
+			setClass(rec.pendingLabel, "DLChatPending", false);
+			setClass(rec.pendingLabel, "DLChatFailed", false);
+			try { rec.pendingLabel.visible = false; } catch (e) {}
+		}
+		rec.pendingShown = false;
+	}
+
+	// 占位和译文用的是同一个面板（见铁律 ①）：拿到还能用的那个，没有就新建一个。
+	// sameHost 那个判断是给"聊天行被游戏回收复用"留的 —— 行换到别的容器时旧标签不能再写。
+	function transLabelFor(rec, host) {
+		if (isValid(rec.trans) && sameHost(rec.trans, host)) return rec.trans;
+		try {
+			rec.trans = $.CreatePanel("Label", host, "DLChatTrans" + (++origSeq));
+			if (rec.trans) setClass(rec.trans, "DLChatTranslation", true);
+		} catch (e) {}
+		return rec.trans;
+	}
+
+	function setPendingVisual(rec, label, text, failed) {
+		if (!isValid(label)) return;
+		writeText(label, text);
+		// 两个类**互斥**（.DLChatTranslation / .DLChatPending / .DLChatFailed）。
+		// 为什么非要摘掉 .DLChatTranslation：它写着 `color: #ffffff`，而内联样式的
+		// `color` 是个函数式颜色（ToPanelEventColor(...)），Panorama 解析不了这种
+		// 语法时会**静默丢掉该属性** -> 占位就变成"白字 + 浅底"，在白气泡旁边看不见。
+		// 反过来真译文到达时也要把这个类加回来（见 applyTranslation）。
+		setClass(label, "DLChatTranslation", false);
+		setClass(label, "DLChatPending", !failed);
+		setClass(label, "DLChatFailed", !!failed);
+		try { label.visible = true; } catch (e) {}
+		rec.pendingLabel = label;
+		rec.pendingShown = true;
+		rec.pendingShownText = String(text);
+		applyBubbleInlineStyle(label, !failed);   // 气泡：内联兜底（带 pending 配色）
+	}
+
+	// 聊天窗（行内双语）：临时写成 "英文 | ···"。
+	// 有意**不建 rec.orig、不加 DLChatOriginalHidden** —— 原文这会儿就在眼前，
+	// 而且那两个是"翻好之后"的状态，提前加上会让随后那次真翻译读到脏数据。
+	// 但 **inlineRemember + 行上的 DLChatChatInline 必须现在就做**：这一格已经被我们
+	// 改成了 "英文 | ···"，不记的话 readRowText 会把占位当成消息正文读出去
+	// （离线测试台抓到过：clean=false -> 下一轮就会拿 "he is low ···" 去翻译）。
+	function showChatInlinePending(rec) {
+		var host = translationHost(rec);
+		if (!isValid(host)) return false;
+		var target = rec.textLabel;
+		if (!isValid(target)) target = findChatTextCell(host);
+		if (!isValid(target)) return false;
+		if (rec.pendingShown && rec.pendingLabel === target) return true;   // 已经在显示
+		hidePendingLabel(rec);                    // 先把旧的那份收掉，避免两份同时挂着
+		var sep = separatorText() || " | ";
+		var before = readText(target);            // 记下这格"原本的文字"（还原用）
+		writeText(target, rec.original + sep + PENDING_TEXT);
+		inlineRemember(target, {
+			original: before || rec.original,
+			finalText: rec.original + sep + PENDING_TEXT,
+			cell: target
+		});
+		if (isValid(rec.panel)) {
+			setClass(rec.panel, "DLChatChatInline", true);
+			inlineRemember(rec.panel, {
+				original: rec.original,
+				finalText: rec.original + sep + PENDING_TEXT,
+				cell: target,
+				collected: rec.original
+			});
+		}
+		rec.textLabel = target;
+		rec.pendingLabel = target;
+		rec.inlinePending = true;
+		rec.pendingShown = true;
+		rec.pendingShownText = PENDING_TEXT;
+		return true;
+	}
+
+	function showPendingLabel(rec) {
+		if (!isValid(rec.panel)) return;
+		if (rec.surface === "chat") {
+			if (showChatInlinePending(rec)) return;
+			// 聊天窗找不到正文格：退回气泡那套（至少别丢反馈）
+		}
+		var host = translationHost(rec);
+		if (!isValid(host)) return;
+		try { host.style.flowChildren = "down"; } catch (e) {}
+		setPendingVisual(rec, transLabelFor(rec, host), PENDING_TEXT, false);
+	}
+
+	// 失败提示：借用同一个标签（不新建节点），翻好了会原地被译文覆盖。
+	function markRowFailed(rec, why) {
+		if (!rec) return;
+		rec.failedMarked = true;
+		rec.failedAt = nowSeconds();
+		rec.pending = false;
+		rec.applied = false;
+		if (!isValid(rec.panel)) return;
+		var host = translationHost(rec);
+		if (!isValid(host)) return;
+		var label = rec.trans;
+		if (isValid(label) && hasClass(label, "DLChatPending")) {
+			setPendingVisual(rec, label, "翻译失败", true);   // 占位原地变失败提示
+		} else if (rec.inlinePending && isValid(rec.pendingLabel)) {
+			// 行内模式：正文格就是"译文"，把 "英文 | ···" 换成 "英文 | 翻译失败"。
+			// 那格同时供 readRowText 还原原文，所以 inline 记录要跟着改成新内容
+			// （inlineEntryFor 是"文字一模一样才算数"，不改就自动作废 -> 会被读成原文）。
+			var sep = separatorText() || " | ";
+			var finalText = rec.original + sep + "翻译失败";
+			writeText(rec.pendingLabel, finalText);
+			inlineRemember(rec.pendingLabel, {
+				original: rec.original, finalText: finalText, cell: rec.pendingLabel
+			});
+			if (isValid(rec.panel)) {
+				inlineRemember(rec.panel, {
+					original: rec.original, finalText: finalText,
+					cell: rec.pendingLabel, collected: rec.original
+				});
+			}
+			rec.pendingShown = true;
+			rec.pendingShownText = "翻译失败";
+		} else {
+			setPendingVisual(rec, transLabelFor(rec, host), "翻译失败", true);
+		}
+		log("row_failed:" + String(rec.original || "").substring(0, 40),
+			{ why: String(why || "").substring(0, 80) });
+	}
+
+	function hasPendingFor(text) {
+		var list = pendingByText[text];
+		return !!(list && list.length);
+	}
+
+	// 这 0.25 秒一轮的扫描里，pending 的行会被 handleRow 直接跳过（"正在等译文，别重复发"），
+	// 所以延迟显示、卡死判定、失败重排队都放在这里推进。复用已有的 0.5 秒 tick，
+	// 不新增定时器（Panorama 的 Schedule 不是免费的）。
+	function pendingTick(now) {
+		var settled = [];
+		var work = 0;
+		for (var i = 0; i < rows.length && work < PENDING_SWEEP_MAX; i++) {
+			var rec = rows[i];
+			if (!isValid(rec.panel)) continue;
+
+			// ① 行被游戏回收拿去显示别的消息了吗？
+			// 这一步**每轮都要做**，不能因为"占位已经显示了"就跳过 ——
+			// 聊天行是复用面板，不查的话旧占位会一直挂在新消息下面。
+			// rowTextNow 会被 readRowText 还原：行内拼接和失败提示都不算"换了内容"。
+			if (rowTextNow(rec.panel, rec.surface) !== rec.original) {
+				hidePendingLabel(rec);
+				continue;                              // 剩下的交给 handleRow 当新行处理
+			}
+
+			// ② 失败提示停留期：到点收掉。收掉后如果还欠着翻译（failed），
+			//    下面的重排队会接手，占位会再出现一次 —— 观感上像"一直没翻出来"。
+			if (rec.pendingShownText && rec.failedMarked
+				&& now - (rec.failedAt || 0) > FAIL_SHOW_SECONDS) {
+				hidePendingLabel(rec);
+				rec.failedMarked = false;
+			}
+
+			if (rec.pending) {
+				if (rec.pendingShown) continue;        // 已经显示着，别每轮重写
+				work += 1;
+				if (now - (rec.pendingSince || 0) >= PENDING_SHOW_DELAY) {
+					showPendingLabel(rec);
+					continue;
+				}
+				if ((rec.retry || 0) >= MAX_ROW_RETRY && now >= (rec.settleBy || 0)) {
+					markRowFailed(rec, "timeout");     // 请求卡死且重试预算用完
+				}
+				continue;
+			}
+
+			if (rec.failedMarked) continue;
+			if (rec.failed && !hasPendingFor(rec.original)) {
+				settled.push(rec);                     // 排到循环后面再动：别边遍历边改状态
+			}
+		}
+		// 失败后重排队（有界：rec.retry 记着已经失败过几次，超预算就只留失败提示）
+		for (var k = 0; k < settled.length; k++) {
+			var one = settled[k];
+			one.failed = false;
+			one.chinese = "";
+			one.applied = false;
+			translateRowText(one, one.original);
+		}
+	}
+
 	function applyTranslation(rec, chinese) {
 		var host = translationHost(rec);
 		if (!isValid(host)) return;
+		// 留一份到"最近译文"：聊天行大约 10 秒就淡出，之后原文和译文都没了，
+		// 翻错了也没法回看（"重译最近一条"只对还在面板树里的行有效）。
+		historyRemember(rec.original, chinese, rec.surface);
 		// 让宿主容器"向下排"。译文是追加的子元素，容器不纵向排的话它会被排到
 		// 右边、或者叠在原文上。官方样式里气泡的 #MessageContents 和聊天窗的
 		// MessageBody 本来就都是 down，这里只是保证万一不是也排得对。
@@ -2089,23 +2558,32 @@
 			// 聊天窗走"行内拼接"（正文 + 分隔符 + 译文，和输入框/发出去的消息同一个写法），
 			// 它有自己的挂载逻辑和一条硬约束，见 applyChatInlineTranslation。
 			if (rec.surface === "chat") {
+				// 正文格里那份 "英文 | ···" 先退场（hidePendingLabel 会把它还原成
+				// "英文 | " 并摘掉 inline 记录），下面整体改写成 "英文 | 中文"
+				hidePendingLabel(rec);
 				if (applyChatInlineTranslation(rec, host, chinese)) return;
 				// 找不到可改写的正文 Label 时往下走，退回"独立标签"那条老路（至少不丢内容）
 			}
 			// 气泡（头顶）与兜底：译文标签挂在正文容器下面
 			// （容器已改成纵向流，所以译文稳定出现在正文下方）
-			if (!isValid(rec.trans) || !sameHost(rec.trans, host)) {
-				try {
-					rec.trans = $.CreatePanel("Label", host, "DLChatTrans" + (++origSeq));
-					if (rec.trans) setClass(rec.trans, "DLChatTranslation", true);
-				} catch (e) {}
-			}
-			if (isValid(rec.trans)) {
-				writeText(rec.trans, chinese);
+			// 占位和译文**共用一个标签**（见 transLabelFor 的说明）：占位已经建过就原地改写，
+			// 少一个节点，也顺带避开 findTextLabel 的"唯一一格有字"约束。
+			var label = transLabelFor(rec, host);
+			if (isValid(label)) {
+				// 占位那份类/可见性要先摘掉，并把 .DLChatTranslation 加回来：
+				// 这里不清的话，翻好了还带着 pending 的浅色样式；而在真机上两个类同时
+				// 挂着时，.DLChatTranslation 的 `color: #ffffff` 会让内联那层解析失败被丢掉。
+				setClass(label, "DLChatTranslation", true);
+				setClass(label, "DLChatPending", false);
+				setClass(label, "DLChatFailed", false);
+				try { label.visible = true; } catch (e) {}
+				rec.pendingShown = false;
+				rec.pendingShownText = null;
+				writeText(label, chinese);
 				// 气泡行额外写一遍内联样式：官方 HUD 顶栏那套样式的作用域不一定覆盖到
 				// 我们注入的标签（BabelTower 就在这里踩过：套了类也取不到底色，
 				// 退化成"透明底浅色字"看不见）。内联样式优先级最高，绕开作用域问题。
-				if (rec.surface === "bubble") applyBubbleInlineStyle(rec.trans);
+				if (rec.surface === "bubble") applyBubbleInlineStyle(label);
 			}
 			if (isValid(rec.panel)) setClass(rec.panel, "DLChatBilingual", true);
 			rec.chinese = chinese;
@@ -2113,6 +2591,7 @@
 			if (!rec.logged) { rec.logged = true; logRowStructure(rec.surface, host, rec); }
 			return;
 		}
+		hidePendingLabel(rec);                     // 替换模式要改写正文，占位（挂在容器上的）先收掉
 
 		// 替换模式：把正文那段文字改写掉
 		var target = rec.textLabel;
@@ -2273,18 +2752,22 @@
 	// 我们注入的标签不在那条链上，套自己类名又可能受作用域影响 -> 结果就是
 	// "标签建出来了、也有文字，但是透明底 + 浅色字，等于看不见"。
 	// 内联样式优先级最高，与作用域无关，所以气泡这一路直接写死。
-	function applyBubbleInlineStyle(label) {
+	//
+	// pending=true 是"还没翻好"的弱化配色：占位和真译文**用同一个标签**，
+	// 所以必须能在两者之间来回切（占位 -> 译文 -> 失败提示）。
+	function applyBubbleInlineStyle(label, pending) {
 		if (!isValid(label)) return;
 		var s = null;
 		try { s = label.style; } catch (e) { return; }
 		if (!s) return;
 		try {
-			s.backgroundColor = "rgba(20, 52, 96, 0.95)";
-			s.color = "#ffffff";
-			s.fontSize = "15px";
+			s.backgroundColor = pending ? "rgba(20, 52, 96, 0.55)" : "rgba(20, 52, 96, 0.95)";
+			s.color = pending ? "#cfe8ff" : "#ffffff";
+			s.fontSize = pending ? "13px" : "15px";
 			s.fontStyle = "normal";
-			s.fontWeight = "600";
-			s.border = "1px solid rgba(120, 180, 255, 0.55)";
+			s.fontWeight = pending ? "500" : "600";
+			s.border = pending ? "1px solid rgba(120, 180, 255, 0.30)"
+				: "1px solid rgba(120, 180, 255, 0.55)";
 			s.borderRadius = "4px";
 			s.padding = "3px 8px";
 			s.marginTop = "3px";
@@ -2327,6 +2810,7 @@
 			if (info.text !== rec.original || info.own) {
 				// 面板被回收拿去显示别的消息了（聊天行会复用）：当新行重来
 				clearChatInline(rec);                    // 上一轮的 "英文 | 中文" / 悬停原文要清掉
+				hidePendingLabel(rec);                   // 上一轮的"翻译中/翻译失败"占位也要收掉
 				rec.original = info.text;
 				rec.contents = info.contents;
 				rec.textLabel = info.textLabel || null;
@@ -2336,6 +2820,7 @@
 				rec.applied = false;
 				rec.chinese = "";
 				rec.retry = 0;
+				rec.fails = 0;                       // 换了一条新消息：重试预算重新算
 				rec.logged = false;
 			}
 		} else {
@@ -2344,7 +2829,11 @@
 				original: info.text, own: info.own, quick: info.quick,
 				surface: surface,
 				chinese: "", orig: null, trans: null, logged: false,
-				applied: false, pending: false, retry: 0
+				applied: false, pending: false, retry: 0,
+				// "翻译中"占位那一套（见 pendingTick）
+				pendingLabel: null, pendingShown: false, pendingShownText: null,
+				pendingSince: 0, settleBy: 0, queuedAt: 0, inlinePending: false,
+				failed: false, fails: 0, failedMarked: false, failedAt: 0
 			};
 			rows.push(rec);
 		}
@@ -2399,11 +2888,21 @@
 	var pendingByText = {};
 
 	function translateRowText(rec, text) {
+		var now = nowSeconds();
 		rec.pending = true;
 		rec.retry = 0;
+		rec.failed = false;
+		// ⚠ rec.retry 是"这一批等待者收到过几次空回包"，每开一批都会归零 —— 它**不能**
+		// 当重试上限用（那样就等于无限重试）。累计失败次数单独记在 rec.fails 上，
+		// 只有这一行真的换了内容才清零（见 handleRow 的"面板被回收"分支）。
+		rec.pendingSince = now;            // 大于 PENDING_SHOW_DELAY 才显示"翻译中"
+		rec.settleBy = now + REQUEST_TIMEOUT + PENDING_SETTLE_BUMP;
+		rec.queuedAt = now;
 		var cached = cacheGet(text);
 		if (cached !== null) {
 			rec.pending = false;
+			hidePendingLabel(rec);         // 命中缓存是 0ms：占位绝不该出现（免得闪一下）
+			rec.fails = 0;
 			applyTranslation(rec, cached);
 			return;
 		}
@@ -2412,33 +2911,68 @@
 
 		waiters = pendingByText[text] = [rec];
 		rec.queuedNow = true;      // 给离线测试台数"这一轮真的发了几条请求"
+		// 源语言：俄语/希腊语按字面报给桥（桥会换提示词），其余交给桥的自动判断。
+		// 以前这里写死 "en" —— 俄语消息要么被丢掉、要么被当成英文硬翻。
+		var srcLang = looksSlavic(text) || "auto";
 		bus.send("translate", {
-			text: text, sourceLanguage: "en", targetLanguage: "zh-Hans"
+			text: text, sourceLanguage: srcLang, targetLanguage: "zh-Hans"
 		}, REQUEST_TIMEOUT, function (res) {
 			var list = pendingByText[text] || [];
-			delete pendingByText[text];
+			delete pendingByText[text];                // 所有权转移给这一批（重排队会另开一批）
 			var out = (res && res.ok && res.translation) ? res.translation : "";
-			for (var i = 0; i < list.length; i++) {
-				var one = list[i];
-				one.pending = false;
-				if (out) {
-					applyTranslation(one, out);
-				} else if (isValid(one.panel)) {
-					// 没翻出来：标成"欠一次重试"，下一次扫描会再试（有次数上限）
-					one.applied = false;
-					one.retry = 1;
-				}
-			}
-			if (out) {
-				cachePut(text, out);
-				clearFailure();
-				log("in:" + text + " => " + out, { viaCache: !!res.viaCache });
-				// 同一个游戏面板可能已经换了内容，新内容按"新行"再走一遍
-				for (var k = 0; k < list.length; k++) markRowDirty(list[k]);
-			} else {
-				noteFailure("英→中", res, text);
-			}
+			// 兜底：渠道回包彻底丢了时，靠一个定时器把**这一批**收干净。
+			// 不清的话：pending 一直是 true -> 占位永远转 -> 这一行再也不会被重试。
+			// 传的是闭包里的 list（不是按 text 再查一次）：同一句话可能已经开了新的一批，
+			// 按 text 查会把新批次误伤 —— 而且 `if (!one.pending) continue` 保证已收尾的
+			// 一条不会被处理第二遍。
+			try {
+				$.Schedule(REQUEST_TIMEOUT + PENDING_SETTLE_BUMP, function () {
+					try { settleRowText(text, "", list, null); } catch (e) {}
+				});
+			} catch (e) {}
+			settleRowText(text, out, list, res);
 		});
+	}
+
+	// 一批等待者的收尾：翻好了贴译文，没翻出来按"有界重试"处理。
+	// 从 bus 回调里抽出来，是因为还有个定时器兜底也要走同一条路（见 translateRowText）。
+	// ⚠ 别在这里 delete pendingByText[text]：同一句话可能在收尾之后马上开了**新的一批**
+	// （失败重排队），按 text 删会把新批次从表里摘掉，后面的同句消息就挂不上去了。
+	// 列表的所有权归调用方：回调捕获 list 时就把它从表里摘下来。
+	function settleRowText(text, out, list, res) {
+		if (!list) return;
+		for (var i = 0; i < list.length; i++) {
+			var one = list[i];
+			if (!one.pending) continue;                // 已经被别的路径收掉了，别重复处理
+			one.pending = false;
+			if (out) {
+				one.fails = 0;
+				applyTranslation(one, out);
+			} else if (isValid(one.panel)) {
+				one.applied = false;
+				one.retry = (one.retry || 0) + 1;
+				one.fails = (one.fails || 0) + 1;
+				// 失败提示挂在这一行上（原来这种"翻不出来"完全没有反馈），到点收掉；
+				// 超过重试预算就只留提示、不再自动重发（靠不置 rec.failed 实现，见 pendingTick）
+				markRowFailed(one, res ? res.error : "no_response");
+				one.failed = (one.fails <= MAX_ROW_RETRY);
+			}
+		}
+		if (out) {
+			cachePut(text, out);
+			clearFailure();
+			log("in:" + text + " => " + out, { viaCache: !!(res && res.viaCache) });
+			// 桥按通道预算截断过这条译文：在状态行说明一次，让玩家知道
+			// 屏幕上的中文是"到这儿为止"，而不是模型少翻了半句
+			if (res && res.truncated) {
+				status.show("这条消息太长，译文已截断显示（原文 " + text.length
+					+ " 字符）", 6);
+			}
+			// 同一个游戏面板可能已经换了内容，新内容按"新行"再走一遍
+			for (var k = 0; k < list.length; k++) markRowDirty(list[k]);
+		} else {
+			noteFailure("英→中", res, text);
+		}
 	}
 
 	// 面板被游戏回收复用后，行上的文字换了：清掉记录，下次扫描当新行处理
@@ -2472,6 +3006,68 @@
 		}
 		status.show("没有可重译的英文消息", 4);
 		return false;
+	}
+
+	// ---------------------------------------------------------------- 最近译文（历史回看）
+	// 为什么需要：游戏大约 10 秒就把聊天行淡出，翻错了、或者打团时没顾上看，
+	// 之后就再也找不回来了 —— "重译最近一条"只对**还在面板树里**的行有效。
+	// 这里在每次译文贴上去的时候留一份（原文 + 译文 + 时间），可以事后回看。
+	var HISTORY_MAX = 20;
+	var historyList = [];
+
+	function historyRemember(original, chinese, surface) {
+		if (!original || !chinese) return;
+		// 同一句连续出现（刷屏、或同一个面板被复用）只留一条，避免历史被重复项塞满
+		var last = historyList[historyList.length - 1];
+		if (last && last.original === original && last.chinese === chinese) return;
+		// 同一条消息可能被贴两次译文（先失败后重试成功、或"重译最近一条"改了口径）：
+		// 找到最近一条同原文的记录就地改写，别在历史里堆两条互相矛盾的译文。
+		for (var i = historyList.length - 1; i >= 0 && i >= historyList.length - 5; i--) {
+			if (historyList[i].original === original) {
+				historyList[i].chinese = chinese;
+				historyList[i].at = nowSeconds();
+				return;
+			}
+		}
+		historyList.push({
+			original: original, chinese: chinese,
+			surface: surface || "", at: nowSeconds()
+		});
+		while (historyList.length > HISTORY_MAX) historyList.shift();
+	}
+
+	function historyText() {
+		if (!historyList.length) return "";
+		var lines = [];
+		for (var i = historyList.length - 1; i >= 0; i--) {
+			var h = historyList[i];
+			lines.push((i + 1 < historyList.length ? "· " : "▶ ")
+				+ h.original.substring(0, 40) + " → " + h.chinese.substring(0, 40));
+		}
+		return lines.join("\n");
+	}
+
+	// 面板里没有可滚动的多行区域（布局没改），所以按"一屏几条"分页显示在状态区。
+	var historyPage = 0;
+
+	function showHistoryPage() {
+		if (!historyList.length) {
+			status.show("还没有译文记录（翻译过别人的消息后这里就有）", 6);
+			return false;
+		}
+		var perPage = 3;
+		var pages = Math.ceil(historyList.length / perPage);
+		if (historyPage >= pages) historyPage = 0;
+		var start = historyList.length - 1 - historyPage * perPage;
+		var chunk = [];
+		for (var i = start; i > start - perPage && i >= 0; i--) {
+			var h = historyList[i];
+			chunk.push(h.original.substring(0, 24) + " → " + h.chinese.substring(0, 24));
+		}
+		status.show("最近译文（" + (historyPage + 1) + "/" + pages + "）："
+			+ chunk.join("　｜　") + "　（再点一次看更早）", 10);
+		historyPage += 1;
+		return true;
 	}
 
 	// ---------------------------------------------------------------- 扫描
@@ -2613,6 +3209,31 @@
 
 	// ---------------------------------------------------------------- 输入框：中文 -> 英文
 	var inputBusy = false;
+	// 发送路径的失败记忆：{sig, n, until}
+	//   sig   = 正文 + 错误码（换一句话就重新计数）
+	//   n     = 连续失败次数
+	//   until = 冷却到这个时刻（秒，用 tickCount 的秒数）
+	var sendFail = { sig: "", n: 0, until: 0 };
+
+	function sendBlocked() {
+		return nowSeconds() < (sendFail.until || 0);
+	}
+
+	// 拔掉输入框末尾的触发串，让它不再命中触发条件。
+	// 这是"停止自激"的关键一步：光复位 inputBusy 不够 —— 0.1 秒后扫描器会
+	// 再一次看到那两个尾随空格，于是又发一次请求（实测就是这个死循环）。
+	// 不走 $.Msg：那个通道在游戏里看不到（要靠推日志），而这条路径本来就是
+	// "出问题了才走到"，状态行会同时给出人话提示。
+	function clearTriggerSpaces(inp, trigger) {
+		try {
+			var text = readText(inp);
+			if (text.length < trigger.length) return false;
+			if (text.substring(text.length - trigger.length) !== trigger) return false;
+			writeText(inp, text.substring(0, text.length - trigger.length));
+			log("send_retry_stop:" + text.length);
+			return true;
+		} catch (e) { return false; }
+	}
 
 	// 触发键：默认三下空格；设置里可改成两下
 	function triggerString() {
@@ -2652,6 +3273,9 @@
 		if (!isValid(inp) || inputBusy) return;
 		if (checkSettingsCommand(inp)) return;
 		if (channel.hints.sendEnabled === false) return;      // 设置里关掉了中->英
+		// 上一句刚失败过：冷却期内不重发（否则会每 0.1 秒打一个请求，
+		// 把单槽通道占满、屏幕上别人的聊天行全排在后面）
+		if (sendBlocked()) return;
 
 		var trigger = triggerString();
 		var text = readText(inp);
@@ -2670,9 +3294,28 @@
 		}, REQUEST_TIMEOUT, function (res) {
 			inputBusy = false;
 			if (!(res && res.ok && res.translation)) {
+				// 失败要**有界**：同一句连续失败到上限就拔掉触发空格并明确告知，
+				// 不能让它每 0.1 秒自己重发一次（那是个死循环，还会饿死接收路径）
+				var sig = body + "|" + ((res && res.error) || "no_response");
+				if (sendFail.sig !== sig) sendFail = { sig: sig, n: 0, until: 0 };
+				sendFail.n += 1;
+				sendFail.until = nowSeconds()
+					+ (SEND_BACKOFF[Math.min(sendFail.n, SEND_BACKOFF.length - 1)] || 5);
 				noteFailure("中→英", res, body);
+				// ⚠️ 必须传 res.error 而不是 res：shortError 里第一句是 String(err)，
+				// 传整个响应对象会显示成 "[object Object]"（实测在游戏里就是这样，
+				// 玩家看到一句"翻译失败（[object Object]）"，等于没有原因）。
+				// fallback 用 failureReason()，它能把"回包被截断 / 桥没响应"也说清楚。
+				var why = shortError((res && res.error) || failureReason(res));
+				status.show("翻译失败：" + why, 8);
+				if (sendFail.n >= SEND_MAX_FAILS) {
+					clearTriggerSpaces(inp, trigger);
+					status.show("翻译失败，已停止自动重试（" + why
+						+ "）；处理后可重新按空格触发", 10);
+				}
 				return;
 			}
+			sendFail = { sig: "", n: 0, until: 0 };       // 成功就清空失败记忆
 			if (readText(inp) !== expected) {
 				// 输入框内容在等结果的时候变了：不能覆盖玩家正在打的字
 				status.show("输入已改变，未替换（译文：" + res.translation + "）", 8);
@@ -2719,7 +3362,16 @@
 	// 以前一律砍成 24 个字符，"API Key 无效或未设置（在 http://localhost:8791/settings
 	// 里填）"正好在尾巴上被砍掉 —— 最该看到的那句没了。
 	function shortError(err) {
+		// 传进来的是**错误字符串**（res.error / 机器码），但历史上有过把整个响应
+		// 对象传进来的写法，String({}) 会得到 "[object Object]" —— 玩家看到的就是
+		// "翻译失败（[object Object]）"，等于没有任何原因。这里主动兜住：
+		// 对象就取它的 .error / .message，取不到就说"未知错误"。
+		if (err && typeof err === "object") {
+			err = err.error || err.message || err.reason || "";
+			if (!err) return "未知错误（桥没给原因）";
+		}
 		var e = String(err || "unknown");
+		if (e.indexOf("[object ") === 0) return "未知错误（桥没给原因）";
 		if (e.indexOf("timeout_no_page") === 0) return "面板未加载";
 		if (e.indexOf("timeout_no_response") === 0) return "面板无响应";
 		if (e.indexOf("timeout") === 0 || e === "http_timeout") return "超时";
@@ -2727,6 +3379,12 @@
 		if (e.indexOf("seturl_failed") === 0) return "SetURL 失败";
 		if (e.indexOf("http_failed") === 0) return "直连失败";
 		if (e.indexOf("http_threw") === 0 || e.indexOf("http_no_promise") === 0) return "直连不可用";
+		// 桥侧的机器码也要说人话：这些以前会原样透出（玩家看不懂 payload_too_long）
+		if (e.indexOf("payload_too_long") === 0) return "内容太长，通道装不下（换短句重试）";
+		if (e.indexOf("bridge_timeout") === 0) return "桥处理超时";
+		if (e.indexOf("internal_error") === 0) return "桥内部错误：" + e.substring(0, 60);
+		if (e.indexOf("empty_text") === 0) return "空文本，没什么可翻的";
+		if (e.indexOf("bad_json") === 0) return "请求格式不对（桥版本可能不匹配）";
 		// 已经像人话（含中文或空格）：原样给出去，别再砍
 		if (/[\u4e00-\u9fff]/.test(e) || e.indexOf(" ") !== -1) {
 			return e.length > 80 ? e.substring(0, 80) + "…" : e;
@@ -2872,7 +3530,12 @@
 			watchInput();
 			every(INPUT_SCAN_SECONDS, scanInput);
 		}
-		every(0.5, function () { status.tick(); });
+		every(0.5, function () {
+			status.tick();
+			// "翻译中"占位要按时间推进：延迟 0.4 秒才显示、失败提示到点收掉、
+			// 失败的行重排队。放在这里是为了复用已有的 tick，不新增定时器。
+			pendingTick(nowSeconds());
+		});
 	}
 
 	try { $.Schedule(0.3, boot); } catch (e) {}

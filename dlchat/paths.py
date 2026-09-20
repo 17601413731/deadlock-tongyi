@@ -1,10 +1,10 @@
 """统一路径管理：打包成 exe 之后不能往程序目录写东西。
 
 三类路径要分清：
-1. **只读资源**（术语表 data/*.json、OCR 模型）→ 打包后在 bundle 里，开发时在项目根目录
+1. **只读资源**（术语表 data/*.json）→ 打包后在 bundle 里，开发时在项目根目录
 2. **可写配置**（config.yaml）→ `%APPDATA%\\deadlock-tongyi\\`；但开发时/便携版优先用
    当前目录或 exe 同目录的同名文件（谁先存在用谁）
-3. **输出**（校准截图、日志）→ `%APPDATA%\\deadlock-tongyi\\`
+3. **输出**（日志、排查用的截图）→ `%APPDATA%\\deadlock-tongyi\\`
 
 这样打包后放进 Program Files 也能正常读写配置。
 """
@@ -49,7 +49,7 @@ def user_base() -> str:
 
 
 def user_dir() -> Path:
-    """可写目录：配置、日志、校准截图都放这里。"""
+    """可写目录：配置、密钥、日志都放这里。"""
     path = Path(user_base()) / APP_NAME
     # 顺序不能换：必须**先**迁移再建目录 —— mkdir 会把目标目录建出来，
     # 迁移的"目标已存在就跳过"这一条就永远成立，等于没迁移。
@@ -113,16 +113,6 @@ def ensure_user_config(template: Path | None = None) -> Path:
     except OSError:
         pass
     return target
-
-
-def output_dir() -> Path:
-    """校准截图/调试输出目录。"""
-    path = user_dir() / "spike_out"
-    try:
-        path.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        path = Path.cwd()
-    return path
 
 
 def log_dir() -> Path:

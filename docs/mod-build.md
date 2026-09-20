@@ -10,7 +10,7 @@
 | 编译器 | 必须用 **CSDK 12** 的 `game\bin_cs2\win64\resourcecompiler.exe` |
 | 工程目录形状 | 输入路径必须是 `<CSDK>\content\citadel_addons\<addon>\panorama\...` |
 | 输出 | 必须显式 `-o`，产物扩展名规范化为 `.vxml_c / .vjs_c / .vcss_c` |
-| 安装 | 编译产物打成 VPK，替换 `Deadlock\game\citadel\addons\pak01_dir.vpk` |
+| 安装 | 编译产物打成 VPK，替换 `Deadlock\game\citadel\addons\pak01_dir.vpk`（仅 `--install`） |
 | 游戏内通信 | 隐藏 `<HTML>` 面板 + `document.title` 轮询（`localhost`，串行单槽） |
 
 ## 二、为什么不能直接用 CS2 / Deadlock 自带的 resourcecompiler
@@ -69,17 +69,27 @@ mod/panorama/{layout,scripts,styles}         我们的源码
 bin_cs2\win64\resourcecompiler.exe -i <源文件> -o <CSDK>\game\citadel_addons\dlchat\panorama\*.{vxml_c,vjs_c,vcss_c}
         │
         ▼
-dist_mod\pak01_dir.vpk                       我们自己写的 VPK 打包器（与引擎产物逐字节同构）
+build\tongyi-pak01_dir.vpk                   我们自己写的 VPK 打包器（与引擎产物逐字节同构）
         │
         ▼
-Deadlock\game\citadel\addons\pak01_dir.vpk   安装（旧文件备份成 .bak）
+Deadlock\game\citadel\addons\pak01_dir.vpk   安装（只有 --install 才走这一步，旧文件备份成 .bak）
 ```
 
 ```bat
-install_mod.bat                     :: 检查游戏没在跑 -> 编译 -> 打包 -> 安装
-python scripts\stage_compile.py --pack            :: 只编译+打包
-python scripts\stage_compile.py --install         :: 编译+打包+安装
+python scripts\stage_compile.py --pack            :: 只编译+打包（本机走这条）
+python scripts\stage_compile.py --install         :: 编译+打包+直接装进 addons
 ```
+
+> 本机约定走 **DMM 导入**（见 [mod-usage.md](mod-usage.md)），所以日常只用 `--pack`，
+> 拿到 `build\tongyi-pak01_dir.vpk` 后在 DMM 里重新导入。
+> `--install` 是"手动管 addons"那条路，两条路别同时用。
+
+> **为什么只产出一份 VPK**：以前为了对齐 DMM 的"选文件夹导入"流程，同一个包会写两份
+> （`dist_mod\` 一份、`dist_mod\dlchat_local\` 一份）。两份一旦分叉，表现是
+> "我改了但游戏里没变化、而且不报错"——实测踩过。现在 DMM 直接选这个文件，不需要第二份。
+>
+> **产物统一在 `build/`**：交付物（zip / vpk / 启动器）放顶层，中间产物放 `build\.work\`。
+> 根目录不再出现 `dist*/build_*` 之类的目录，磁盘紧张时 `rm -rf build` 即可。
 
 > 装的时候 Deadlock 必须完全退出：引擎会锁住 `addons\pak01_dir.vpk`，
 > 占用时报 `PermissionError: [WinError 32] 另一个程序正在使用此文件`。
@@ -127,13 +137,15 @@ VPK 的根是 **addon 目录**（`game/citadel_addons/<addon>/`），不是里�
 
 另一个坑出在**测试脚本**上：PowerShell 的 `Invoke-RestMethod -Body '<含中文的JSON>'`
 会把中文编坏，桥收到乱码后模型会回一句 `wtf`——一度以为是翻译链路坏了。
-测桥请用 `python scripts/bridge_smoke.py`（显式 UTF-8）。
+所以自检脚本一律**显式 UTF-8**（`scripts/bridge_selftest.py` 里
+`sys.stdout.reconfigure(encoding="utf-8")` 那一行就是为这个加的）。
 
 ## 五、联调工具
 
 | 工具 | 用途 |
 |------|------|
-| `python scripts/bridge_smoke.py` | 双向翻译冒烟（UTF-8 正确） |
+| `node scripts\js_check.js` | **改 JS 之后先跑这个**：离线测试台，13 个分节（识别层/挂载点/双语行内/占位/失败提示/回收复用/入口点…），不需要开游戏 |
+| `python scripts\bridge_selftest.py` | 桥的协议自检（op 白名单、compact 长度门禁、设置读写、试翻），**需要桥已经在跑**。它会临时改设置（含"恢复默认"）再还原 —— 现在会先整文件备份 `settings.json` 并在 `finally` 里放回，所以不会再吃你的 API Key；但**跑之前仍建议确认桥是通的**（跑挂了也能还原） |
 | `python scripts/mod_log.py` | 读游戏侧推到桥上的诊断日志（boot/翻译/失败） |
 | `python scripts/probe_backend.py` | 四种请求形态问模型，排查后端 |
 | `python scripts/probe_pipeline.py` | 逐层排查 BridgeApp → ChatTranslator → 模型 |
@@ -144,3 +156,20 @@ VPK 的根是 **addon 目录**（`game/citadel_addons/<addon>/`），不是里�
 `mod/panorama/layout/*.xml` 的基线就是从游戏自身的 `chat.vxml_c` /
 `citadel_hud_top_bar_chat.vxml_c` 反解出来的，改动处都标了 `[dlchat]`。
 Valve 更新 UI 后重新反解一次照着抄即可。
+
+## 六、诊断日志开关（`DEBUG`）
+
+`mod/panorama/scripts/dlchat.js` 顶部有 `var DEBUG = false;`。
+
+**默认关**，这不是疏忽：游戏侧没法直接看 console，只能把日志 POST 到桥
+（`python scripts\mod_log.py` 读），而**每一条日志都是一次串行往返** ——
+通道是单槽的（一次页面导航 + title 轮询），一次成功翻译产生 2 条日志，
+3 条消息就是 6 次额外导航，等于通道开销翻倍。
+
+排查问题（"为什么这句没翻"）时：
+
+1. 把 `DEBUG` 改成 `true`
+2. `node scripts\js_check.js` 过一遍（确认没写坏）
+3. `python scripts\stage_compile.py --pack` → DMM 重新导入
+4. 复现问题 → `python scripts\mod_log.py` 看 `in:` / `out:` / `failed:` 行
+5. **改回 `false` 再编译一次**（别把调试包留给日常玩）

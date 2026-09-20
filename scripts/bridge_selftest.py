@@ -12,10 +12,14 @@
 
 from __future__ import annotations
 
+import functools
 import json
+import os
 import re
+import shutil
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -37,6 +41,50 @@ SNAPSHOT_FIELDS = ("receive_enabled", "send_enabled", "display_mode", "outgoing_
                    "model", "provider", "base_url")
 
 
+def settings_file() -> Path:
+    from dlchat.settings import settings_path
+
+    return settings_path()
+
+
+def backup_settings_file():
+    """把整个 settings.json 原样备份一份（含明文密钥）。
+
+    **为什么光靠字段快照不够**：自检里有一节测「恢复默认」，而它的实现就是
+    `reset_settings()` = 删掉 settings.json —— 而**用户唯一的 API Key 就存在那个
+    文件里**（config.yaml 的 api_key 默认留空）。字段快照按设计不含 api_key，
+    还原时只会把其余字段写回一个**没有密钥**的新文件。
+
+    实测事故（2026-09-20）：跑完自检后玩家在游戏里看到
+    「翻译失败，已停止自动重试」，排查发现 settings.json 被这个自检删了，
+    云端没有密钥 → 401。测试工具绝不能顺手毁掉玩家的配置，所以这里退回到
+    最原始也最可靠的做法：**整个文件先拷走，结束时拷回来**。
+    """
+    src = settings_file()
+    if not src.exists():
+        return None
+    tmp = Path(tempfile.gettempdir()) / f"tongyi-settings-backup-{os.getpid()}.json"
+    try:
+        shutil.copy2(src, tmp)
+        return tmp
+    except OSError as e:  # noqa: BLE001
+        print(f"  ⚠ 备份 settings.json 失败（自检会改设置，请先自己备份）: {e}")
+        return None
+
+
+def restore_settings_file(backup) -> None:
+    if not backup:
+        return
+    src = settings_file()
+    try:
+        src.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(backup, src)
+        backup.unlink(missing_ok=True)
+        print("[还原] 已把 settings.json 原样放回（含密钥）")
+    except OSError as e:  # noqa: BLE001
+        print(f"[还原] ⚠ 失败，请手动恢复：{backup} -> {src}  ({e})")
+
+
 def check(name: str, ok: bool, detail: str = "") -> None:
     print(f"  {'✓' if ok else '✗'} {name}" + (f"   {detail}" if detail else ""))
     if not ok:
@@ -52,8 +100,17 @@ def post(path: str, payload) -> dict:
     req = urllib.request.Request(
         BASE + path, data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.loads(r.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # 桥在翻译失败时按设计返回 502 —— 那是**要检查的响应**，不是脚本错误。
+        # 以前这里让 HTTPError 直接冒泡，整个自检崩在半路，
+        # 于是后面那段"还原用户设置"永远跑不到（实测把玩家的 API Key 一起带走了）。
+        try:
+            return json.loads(e.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001
+            return {"ok": False, "error": f"http_{e.code}"}
 
 
 def page_op(op: str, d: str) -> str:
@@ -63,19 +120,47 @@ def page_op(op: str, d: str) -> str:
     return m.group(1) if m else "?"
 
 
+def restores_settings(fn):
+    """保证**无论自检怎么结束都还原用户设置**。
+
+    为什么必须这样包：这个自检里有一节测「恢复默认」，而那一步的实现是
+    `reset_settings()` = **删掉 %APPDATA%\\deadlock-tongyi\\settings.json** ——
+    用户唯一的 API Key 就在那个文件里。
+
+    实测事故（2026-09-20）：翻译失败返回 HTTP 502，而 `post()` 当时让 HTTPError
+    直接冒泡，自检**崩在 [4] 试翻那一节**，于是写在 `main()` 末尾的还原代码永远
+    没跑到，用户的密钥就跟着没了（截图里那句"翻译失败，已停止自动重试"就是这么来的）。
+    教训：清理逻辑不能放在 happy path 的末尾，必须在 finally 里。
+    """
+    @functools.wraps(fn)
+    def wrapper(*a, **kw):
+        backup = backup_settings_file()
+        snapshot: dict = {}
+        if backup:
+            print(f"  （已备份 settings.json -> {backup}）")
+        try:
+            try:
+                snap = json.loads(get("/api/v1/settings?d=%7B%22view%22%3A%22compact%22%7D"))
+                if snap.get("persisted"):
+                    snapshot = {k: snap[k] for k in SNAPSHOT_FIELDS if k in snap}
+            except Exception as e:  # noqa: BLE001
+                print(f"  （读取当前设置失败，跳过字段级还原）: {e}")
+            return fn(*a, **kw)
+        finally:
+            # 先按字段放回设置，再用整文件覆盖 —— 后者才包含 API Key
+            if snapshot:
+                try:
+                    post("/api/v1/settings", snapshot)
+                    print("[还原] 已按字段恢复自检前的设置")
+                except Exception as e:  # noqa: BLE001
+                    print(f"[还原] 字段级还原失败：{e}")
+            restore_settings_file(backup)
+    return wrapper
+
+
+@restores_settings
 def main() -> int:
     print(f"=== 桥自检 {BASE}")
-    # 自检会改设置（含"恢复默认"），先记下用户当前的设置，跑完还原 —— 测试工具不该
-    # 顺手把用户配置清掉。
-    snapshot = None
-    try:
-        snap_raw = get("/api/v1/settings?d=%7B%22view%22%3A%22compact%22%7D")
-        snap = json.loads(snap_raw)
-        if snap.get("persisted"):
-            snapshot = {k: snap[k] for k in SNAPSHOT_FIELDS if k in snap}
-    except Exception as e:  # noqa: BLE001
-        print(f"  （读取当前设置失败，跳过还原）: {e}")
-
     print("[1] op 白名单（页面必须原样放行，降级成 translate 就是 bug）")
     for op in ("translate", "health", "settings", "settings%2Ftest", "models", "log"):
         resolved = page_op(op, "%7B%7D")
@@ -199,15 +284,13 @@ def main() -> int:
           f"{len(page)} 字符")
     check("只配 API Key，别的设置不在这里",
           all(k not in page for k in ("术语表", "温度", "模型常驻", "译文显示方式")))
-    check("页面说明了去哪改别的（游戏内 F8）", "F8" in page)
+    check("页面说明了去哪改别的（游戏内 /tongyi 面板）",
+          "/tongyi" in page and "F8" not in page,
+          "F8 那个键绑定实测无效，早就从文档和错误文案里删了")
 
     print(f"\n[结果] {'全部通过' if not FAILS else '失败项: ' + ', '.join(FAILS)}")
-    if snapshot:
-        try:
-            post("/api/v1/settings", snapshot)
-            print("[还原] 已恢复自检前的设置")
-        except Exception as e:  # noqa: BLE001
-            print(f"[还原] 失败：{e}")
+    # 注意：还原不在这里做 —— 它由 @restores_settings 的 finally 负责，
+    # 这样即使上面任何一节抛异常，用户的设置（尤其是 API Key）也一定放得回去。
     return 0 if not FAILS else 1
 
 

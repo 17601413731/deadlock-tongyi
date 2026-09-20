@@ -1,31 +1,27 @@
 [project]
 name = "deadlock-tongyi"
 version = "0.1.0"
-description = "Deadlock 文字聊天双向翻译：英文聊天→中文显示，中文输入→英文注入"
+description = "Deadlock 聊天双向翻译：游戏内 mod + 本地翻译桥"
 requires-python = ">=3.10"
+# 只需要"翻译桥"这一条链路的东西。
+#
+# 这里曾经还有 PySide6 / numpy / Pillow / mss / pyperclip / keyboard / pywin32
+# 和 [ocr] rapidocr+dxcam —— 那些是**外置桌面版**（截屏 OCR + 键盘注入 + Qt 界面）
+# 的依赖。那条路线在 2026-09-13 被游戏内 mod 方案取代、2026-09-20 连代码一起删除，
+# 现役链路一个字都用不到（packaging/bridge.spec 的 excludes 里早就把它们排掉了）。
 dependencies = [
-    "PySide6>=6.6",
     "openai>=1.0",
     "pydantic>=2.0",
     "PyYAML>=6.0",
-    "numpy>=1.24",
-    "Pillow>=10.0",
-    "mss>=9.0",
-    "pyperclip>=1.8",
-    "keyboard>=0.13.5",
-    "pywin32>=306; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
-# OCR 来源需要；不装也可以用控制台日志来源（更准，但需要游戏侧开启日志）
-ocr = ["rapidocr>=3.0", "dxcam"]
-# Windows 内建 OCR 兜底
-ocr-win = ["winocr"]
-dev = ["pytest>=8.0"]
+# 开发/打包用：PyInstaller 打玩家包（packaging/bridge.spec）
+pack = ["pyinstaller>=6.0"]
+# 测试用的是标准库 unittest，不需要 pytest：
+#   python -m unittest discover -s tests -t .
 
 [project.scripts]
-# 桌面端入口（打包后是 deadlock-tongyi.exe，见 packaging/deadlock-tongyi.spec）
-deadlock-tongyi = "dlchat.main:main"
 # 给 Steam 启动选项用的包装器：先起翻译桥，再启动游戏（见 dlchat/launcher.py）
 # 打包后叫 tongyi-launch.exe；这个控制台脚本名保持 dlchat-launch 不动，免得
 # 改了之后文档/习惯里的 `dlchat-launch --stay` 失效（不是玩家可见的名字）

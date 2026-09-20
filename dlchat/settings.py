@@ -82,6 +82,11 @@ TRIGGER_LABELS = {
     "ctrl_enter": "Ctrl + Enter",
 }
 
+# 「上下文轮数」的显示文案。0 = 每句独立翻（最省 token）；
+# 1 = 记住刚过去的那一句（默认，短句消歧收益最大）；2 = 再往前一句。
+CONTEXT_LABELS = {0: "不带上文（每句独立）", 1: "带 1 轮（推荐）", 2: "带 2 轮"}
+CONTEXT_CHOICES = tuple(sorted(CONTEXT_LABELS))
+
 # 「我发出去的消息」在双语模式下，中文和英文之间拼什么。
 # 键名要短：这个值要经 HTML 文档标题传回游戏（compact 包长度是硬约束）。
 SEPARATOR_CHOICES = ("pipe", "full", "space")
@@ -103,7 +108,7 @@ def separator_text(choice: str) -> str:
 
 # 这些字段一变就必须重建 translator（其余字段只影响渲染/开关）
 MODEL_FIELDS = ("provider", "model", "base_url", "api_key", "temperature",
-                "top_p", "max_tokens", "timeout_s", "context_window",
+                "top_p", "max_tokens", "timeout_s", "context_rounds",
                 "keep_alive", "glossary", "max_glossary_terms")
 
 # ---------------------------------------------------------------------------
@@ -215,7 +220,16 @@ class AppSettings(BaseModel):
     temperature: float = 0.0
     top_p: float = 0.9
     max_tokens: int = 128
-    context_window: int = 0           # 游戏内走单句（0 = 不带上下文，省 prefill）
+    # 最近 N 轮原文/译文作为上下文（短句消歧最有效：项目自己的调研里，
+    # "段落短、需要上下文"的场景收益最大）。0 = 关闭。
+    #
+    # 为什么默认 1 而不是更大的数：一句 "on him" / "no" / "push" 没有上句就没法翻，
+    # 但带太多轮会 (a) 让每句的输入 token 线性增长，(b) 把上一句的主语带进这一句
+    # （跨句污染）。1 轮 = 只记住屏幕上刚过去的那一句，收益/风险比最好。
+    #
+    # 注意只作用于**接收**方向（别人发的英文）：发送方向是"我自己要说的话"，
+    # 不需要屏幕上别人的聊天历史，见 client._history_for。
+    context_rounds: int = 1
     timeout_s: float = 20.0
     keep_alive: str = "60m"           # 模型常驻时长，避免第一条重新载入
 
@@ -240,7 +254,11 @@ def defaults_from_config(cfg: Any) -> AppSettings:
         temperature=t.temperature,
         top_p=t.top_p,
         max_tokens=min(int(t.max_tokens), 256),
-        context_window=0,             # 游戏内默认单句
+        # 上下文轮数**故意不从 config.yaml 取**：以前这里写死 0，
+        # 结果 config.yaml 里那行"最近 N 轮上下文（短句消歧最有效）"是句空话。
+        # 现在它是用户设置里真正生效的一项（游戏内面板可调），config.yaml 的
+        # translate.context_window 不再参与 —— 免得两处都能改、以谁为准要靠猜。
+        context_rounds=AppSettings.model_fields["context_rounds"].default,
         timeout_s=t.timeout_s,
         keep_alive=t.keep_alive,
         glossary=bool(t.glossary),
@@ -335,7 +353,7 @@ def apply_to_config(cfg: Any, settings: AppSettings) -> Any:
             "temperature": settings.temperature,
             "top_p": settings.top_p,
             "max_tokens": settings.max_tokens,
-            "context_window": settings.context_window,
+            "context_window": max(int(settings.context_rounds), 0),
             "timeout_s": settings.timeout_s,
             "keep_alive": settings.keep_alive,
             "glossary": settings.glossary,
@@ -378,6 +396,8 @@ def effective_view(settings: AppSettings, stats: dict[str, Any],
         # HTML 标题通道传回去的，长度有硬上限（实测 ~900 字符就废）。
         "configFile": str(paths.default_config_path()),
         "triggerLabel": TRIGGER_LABELS.get(settings.trigger, settings.trigger),
+        "contextLabel": CONTEXT_LABELS.get(settings.context_rounds,
+                                           f"{settings.context_rounds} 轮"),
     }
     return view
 

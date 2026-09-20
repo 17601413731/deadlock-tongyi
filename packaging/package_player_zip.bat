@@ -1,8 +1,8 @@
 @echo off
 rem ============================================================
-rem  Build the zip you send to players.
+rem  Build the ONE artifact you send to players: build\tongyi-players.zip
 rem
-rem  Output layout (inside dist\deadlock-tongyi-players.zip):
+rem  Layout inside the zip:
 rem      tongyi_launch\       the bridge + launcher (START_HERE.bat first)
 rem      mod\                  the game mod (pak) + its own readme
 rem
@@ -11,23 +11,27 @@ rem  the mod is imported through Deadlock Mod Manager. Different install
 rem  paths, different update paths - mixing them in one folder confuses
 rem  players and makes updates messy.
 rem
+rem  Everything this script touches lives under build\ : the zip goes to
+rem  build\ top level, the staging tree under build\.work\. Nothing is
+rem  written to the project root.
+rem
 rem  KEEP PURE ASCII (cmd parses .bat byte by byte; multi-byte characters
 rem  can contain bytes it reads as operators and the line gets cut in half).
 rem ============================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0.."
 
-set "SRC=dist\bridge"
-set "STAGE=dist\package"
+set "SRC=build\.work\bridge"
+set "STAGE=build\.work\stage"
 set "PLAYER=packaging\player"
-set "MODVPK=dist_mod\dlchat_local\pak01_dir.vpk"
-set "OUT=dist\deadlock-tongyi-players.zip"
+set "MODVPK=build\tongyi-pak01_dir.vpk"
+set "OUT=build\tongyi-players.zip"
 
 if not exist "%SRC%\tongyi-launch.exe" (
   echo.
   echo [ERROR] %SRC%\tongyi-launch.exe not found.
   echo         Build it first:
-  echo           python -m PyInstaller --clean --noconfirm --distpath dist --workpath build_pkgs packaging\bridge.spec
+  echo           python -m PyInstaller --clean --noconfirm --distpath build/.work --workpath build/.work/pyinstaller packaging\bridge.spec
   echo.
   pause
   exit /b 1
@@ -35,8 +39,8 @@ if not exist "%SRC%\tongyi-launch.exe" (
 if not exist "%MODVPK%" (
   echo.
   echo [ERROR] mod pak not found: %MODVPK%
-  echo         Build it first:
-  echo           python scripts\build_mod.py
+  echo         Build it first ^(close Deadlock first^):
+  echo           python scripts\stage_compile.py --pack
   echo.
   pause
   exit /b 1
@@ -65,7 +69,7 @@ if exist "%STAGE%" rd /s /q "%STAGE%"
 if exist "%STAGE%" (
   echo.
   echo [ERROR] cannot clear %STAGE% - something still holds a file in it.
-  echo         Close any running dlchat window, then run this again.
+  echo         Close any running tongyi-launch window, then run this again.
   echo.
   pause
   exit /b 1
@@ -90,21 +94,37 @@ rem  readme tells them to edit. Same content, so nothing breaks either way.
 if exist "%STAGE%\tongyi_launch\_internal\config.yaml" copy /y "%STAGE%\tongyi_launch\_internal\config.yaml" "%STAGE%\tongyi_launch\config.yaml" >nul
 
 echo [3/4] adding the mod ...
-rem  The pak gets an ascii name with a tongyi- prefix here: it is clearer than
-rem  pak01_dir.vpk, and the mod readme explains the rename if DMM insists on
-rem  the pakNN_dir.vpk pattern.
+rem  The pak is a single FILE now (build\tongyi-pak01_dir.vpk), imported in DMM
+rem  by picking that file. We used to emit two copies (a folder-based import
+rem  path), which silently diverged - one stale copy meant "I changed it but the
+rem  game shows the old behaviour" with no error at all.
+rem  The zip keeps a tongyi- prefix: clearer than pak01_dir.vpk, and the mod
+rem  readme explains the rename if DMM insists on the pakNN_dir.vpk pattern.
 copy /y "%MODVPK%" "%STAGE%\mod\tongyi-pak01_dir.vpk" >nul || goto failed
 copy /y "%PLAYER%\MOD-README-zh.txt" "%STAGE%\mod\README-zh.txt" >nul || goto failed
 if exist "%STAGE%\tongyi_launch\_internal\__pycache__" rd /s /q "%STAGE%\tongyi_launch\_internal\__pycache__"
 
 echo [4/4] zipping -> %OUT% ...
 if exist "%OUT%" del /q "%OUT%"
-powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Compress-Archive -Path 'dist\package\*' -DestinationPath '%OUT%' -CompressionLevel Optimal"
+if not exist build mkdir build
+powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Compress-Archive -Path 'build\.work\stage\*' -DestinationPath '%OUT%' -CompressionLevel Optimal"
 if errorlevel 1 (
   echo [WARN] Compress-Archive failed, trying .NET ZipFile ...
-  powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; if (Test-Path '%OUT%') { Remove-Item '%OUT%' }; [System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path 'dist\package').Path, (Join-Path (Get-Location) '%OUT%'))"
+  powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; if (Test-Path '%OUT%') { Remove-Item '%OUT%' }; [System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path 'build\.work\stage').Path, (Join-Path (Get-Location) '%OUT%'))"
   if errorlevel 1 goto failed
 )
+
+rem  The staging tree is a pure intermediate: drop it so build\.work stays small
+rem  and the next run starts from a clean copy anyway.
+rd /s /q "%STAGE%" >nul 2>&1
+
+rem  Promote the bridge out of .work so the handy folder holds deliverables only:
+rem  build\tongyi-launch\ is what Steam launch options and make_launch_option.bat
+rem  point at. .work\bridge is the PyInstaller output (keeping it there means two
+rem  48MB copies, so the folder is MOVED, not copied).
+echo [extra] promoting the bridge -> build\tongyi-launch\ ...
+if exist "build\tongyi-launch" rd /s /q "build\tongyi-launch"
+move "build\.work\bridge" "build\tongyi-launch" >nul
 
 for %%F in ("%OUT%") do set "MB=%%~zF"
 set /a MB=%MB%/1048576

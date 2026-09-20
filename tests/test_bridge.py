@@ -42,8 +42,9 @@ class _StubTranslator:
         self.calls: list[tuple[str, str]] = []
         self.last_error = ""
 
-    async def translate_full(self, text: str, direction: str) -> str:
-        self.calls.append((text, direction))
+    async def translate_full(self, text: str, direction: str,
+                             source_lang: str = "en") -> str:
+        self.calls.append((text, direction, source_lang))
         return f"[{direction}]{text}"
 
     async def prewarm(self) -> bool:
@@ -137,6 +138,31 @@ class DirectionTest(unittest.TestCase):
     def test_explicit_source_wins(self):
         self.assertEqual(BridgeApp._direction("hi", "zh", "en"), "zh->en")
         self.assertEqual(BridgeApp._direction("hi", "en", "zh-CN"), "en->zh")
+
+    # ---- 非拉丁字母的语言（俄语）----
+    # 以前 mod 把西里尔字母判成"非英文"直接丢掉，玩家看到的是"这条永远不翻"。
+
+    def test_russian_auto_is_detected_and_sent_to_zh(self):
+        self.assertEqual(BridgeApp._detect_language("привет как дела"), "ru")
+        self.assertEqual(BridgeApp._direction("привет как дела", "auto", "zh-Hans"),
+                         "en->zh")
+
+    def test_russian_to_english_is_left_alone(self):
+        """没有"俄->英"的提示词，就别硬翻（原样返回比瞎翻好）。"""
+        self.assertIsNone(BridgeApp._direction("привет", "ru", "en"))
+
+    def test_greek_detected(self):
+        self.assertEqual(BridgeApp._detect_language("καλημέρα"), "el")
+
+    def test_detection_order_prefers_chinese(self):
+        """中英混排（"上 mid"）必须判成中文，不能因为字母少就判英文。"""
+        self.assertEqual(BridgeApp._detect_language("上 mid"), "zh")
+
+    def test_detected_language_reported_honestly(self):
+        """回包里的 detectedLanguage 以前是按方向猜的（俄语会被报成 en）。"""
+        self.assertEqual(BridgeApp._detected("en->zh", "ru"), "ru")
+        self.assertEqual(BridgeApp._detected("en->zh", "en"), "en")
+        self.assertEqual(BridgeApp._detected("en->zh", ""), "en")
 
 
 class BridgePageTest(unittest.TestCase):
@@ -325,7 +351,7 @@ class DeepSeekProviderTest(_IsolatedSettingsTest):
         stub.last_error = ("API Key 无效或未设置"
                            "（在 http://localhost:8791/settings 里填）")
 
-        async def _fail(text, direction):
+        async def _fail(text, direction, source_lang="en"):
             return ""
 
         stub.translate_full = _fail
@@ -379,7 +405,9 @@ class DeepSeekProviderTest(_IsolatedSettingsTest):
         out = app.translate("mid no", "en", "zh-Hans")
         self.assertFalse(out["ok"])
         self.assertIn("翻译模型", out["error"])
-        self.assertIn("F8", out["error"])
+        # 指路必须指向**真的能打开面板**的方式：F8 那个键绑定实测无效，早就删了
+        self.assertIn("/tongyi", out["error"])
+        self.assertNotIn("F8", out["error"])
 
     def test_switching_provider_keeps_a_valid_explicit_model(self):
         app = _app()

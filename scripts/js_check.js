@@ -55,6 +55,7 @@ const VANILLA_HANDLER = /^Citadel/;
 const REQUIRED_HOOKS = [
   "DLChatSelfTest", "DLChatSelfTestCompact", "DLChatSelfTestQueue",
   "DLChatSelfTestRows", "DLChatSelfTestAttach", "DLChatSelfTestInline",
+  "DLChatSelfTestPending", "DLChatSelfTestPendingFail",
 ];
 // 布局里出现过的设置键都点一遍（解析布局时会补上布局真正绑定的那些键）
 const SETTING_KEYS = [
@@ -433,6 +434,19 @@ function buildBubbleRow(container, opts) {
     textLabel: textLabel };
 }
 
+// 大厅/展开聊天行，照 readMessageRow 的第三套结构：
+//   ChatLinesPanel > ChatLineContainer(类) > ChatLine(类) + ChatPersona(类)
+// 注意：这个容器**临时挂上、验完就摘**（见"翻译中占位"那一节）。它是三个界面里
+// 唯一没被别的用例用到的，常驻的话扫描会每次都把这几行排进翻译，给别的断言添噪音。
+const lobbyBox = build(contextPanel, "ChatLinesPanel");
+function buildLobbyRow(container, opts) {
+  const o = opts || {};
+  const row = build(container, "", ["ChatLineContainer"]);
+  build(row, "", ["ChatLine"], o.text);
+  build(row, "", ["ChatPersona"], o.sender || "Someone");
+  return { row: row };
+}
+
 // 往脚本自己的译文缓存里塞一条：走 DLChatSelfTestInline（它先 cachePut，再走正常的
 // "命中缓存"路径），所以后面不需要桥。种子行放在**扫描容器之外**，免得污染被测行。
 const seedHost = build(contextPanel, "DLChatSeedRows");
@@ -646,6 +660,151 @@ section("双语行内", function () {
   note("行内双语：正文格 = 英文 | 中文，行带 DLChatChatInline（不带 DLChatBilingual），悬停原文保住并收起");
 });
 
+// ================================================================ ⑥b 翻译中占位
+// 为什么单独把关：别人发来的消息要等 1 秒多才有译文（打字那一路只有 0.17 秒），
+// 中间那一段原来屏幕上什么都不发生。占位是**加在原文后面的一个标签**，
+// 加错了的后果比"没提示"严重得多 —— 它会被当成消息原文再翻一遍。
+section("翻译中占位", function () {
+  const pending = hook("DLChatSelfTestPending");
+  if (!pending) { fail("缺少钩子 DLChatSelfTestPending（离线测试台需要它）"); return; }
+
+  // ① 聊天窗（行内双语）：占位拼进正文那一格
+  const row = buildChatRow(chatBox, { sender: "P", text: "he is low" });
+  let out = "";
+  try { out = String(pending(row.row, "he is low", "他残血")); } catch (e) { out = "抛出:" + e; }
+  show("聊天窗翻译中: " + out);
+  expect("占位(聊天窗): 延迟没到不该显示（缓存命中 0ms，无脑显示会闪一下）",
+    out.indexOf("early=none") !== -1, out);
+  expect("占位(聊天窗): 延迟到了要显示占位", out.indexOf("delayed=shown") !== -1, out);
+  expect("占位(聊天窗): 占位文字是 ···（行内模式报的是那一格的整串）",
+    out.indexOf('cell="he is low' + SEP_PIPE + '···"') !== -1, out);
+  expect("占位(聊天窗): 行内模式在正文格里拼「英文 | ···」",
+    out.indexOf("cell=") !== -1, out);
+  expect("占位(聊天窗): 占位不能被当成消息原文读回去（否则会拿 'he is low ···' 去翻）",
+    out.indexOf("clean=true") !== -1, out);
+  expect("占位(聊天窗): 译文到了以后占位要换成译文、类也要摘掉",
+    out.indexOf('after="he is low | 他残血"') !== -1 && out.indexOf("afterCls=false") !== -1,
+    out);
+  expect("占位(聊天窗): 译文到达后正文格是「英文 | 中文」（after 报的就是这一格的文字）",
+    out.indexOf('after="he is low' + SEP_PIPE + '他残血"') !== -1, out);
+  expect("占位(聊天窗): 占位和译文要落在同一格（不能多出一个节点，"
+    + "替换模式的兜底靠 findTextLabel 的『唯一一格有字』）",
+    out.indexOf("samePanel=true") !== -1, out);
+  // 行被游戏回收复用：旧占位必须收掉，否则会挂在新消息下面
+  expect("占位(聊天窗): 行被回收去显示新消息后，旧占位要收掉", out.indexOf("recycledGone=true") !== -1, out);
+  expect("占位(聊天窗): 回收后的正文要读成新消息的原文", out.indexOf('recycledRead="push now"') !== -1, out);
+
+  // ② 头顶气泡：占位是挂在 #MessageContents 下的独立标签，必须有内联底色兜底
+  const bub = buildBubbleRow(bubbleBox, { text: "mid no" });
+  try { out = String(pending(bub.row, "mid no", "中路没人")); } catch (e) { out = "抛出:" + e; }
+  show("气泡翻译中: " + out);
+  expect("占位(气泡): 延迟到了要显示占位", out.indexOf("delayed=shown") !== -1, out);
+  expect("占位(气泡): 占位要带 DLChatPending 类（CSS 靠它做弱化配色）",
+    out.indexOf("cls=true") !== -1, out);
+  expect("占位(气泡): 占位不能被当成消息原文读回去", out.indexOf("clean=true") !== -1, out);
+  // 这条是真正的门禁：气泡的占位是挂在**行容器**（#MessageContents）下面的，
+  // collectText 会从行/气泡/TextContainer 各层把子标签拼一遍 —— 只让占位标签自己
+  // 返回空是不够的，必须保证"真正扫描用的" readMessageRow 读出来的还是纯英文。
+  expect("占位(气泡): 扫描入口（readMessageRow）读出来必须是纯英文原文，"
+    + "不能被拼进 ···（否则下一轮会把 'mid no ···' 当原文送去翻译）",
+    out.indexOf('probe={surface=bubble text="mid no"') !== -1, out);
+  expect("占位(气泡): 译文到达后扫描入口读出来仍是纯英文原文",
+    out.indexOf('afterProbe={surface=bubble text="mid no"') !== -1, out);
+  expect("占位(气泡): 占位必须自带内联底色（透明底 = 白气泡旁边看不见）",
+    out.indexOf('bg="rgba(20, 52, 96, 0.55)"') !== -1, out);
+  expect("占位(气泡): 占位和真译文的底色要不一样（一样就分不出翻没翻好）",
+    out.indexOf('bg="rgba(20, 52, 96, 0.55)"') !== -1
+    && out.indexOf('afterBg="rgba(20, 52, 96, 0.95)"') !== -1, out);
+  expect("占位(气泡): 译文到达后要把 .DLChatTranslation 加回来（它和 .DLChatPending 互斥："
+    + "同时挂着时真机上内联 color 会被静默丢掉）",
+    out.indexOf("afterTransCls=true") !== -1 && out.indexOf("afterCls=false") !== -1, out);
+  expect("占位(气泡): 译文到达后占位原地变成译文（同一个面板）",
+    out.indexOf('after="中路没人"') !== -1 && out.indexOf("afterCls=false") !== -1
+    && out.indexOf("samePanel=true") !== -1, out);
+  const lbl = labelsUnder(bub.contents).filter((l) => String(l.text).indexOf("···") !== -1);
+  expect("占位(气泡): 翻好之后气泡里不能还留着 ···（否则气泡下面永远挂一行省略号）",
+    lbl.length === 0, "还剩 " + lbl.length + " 个: "
+    + JSON.stringify(lbl.map((l) => l.text)));
+  // 气泡译文必须自带内联底色这条老约束对占位同样成立：占位也是画在白气泡旁边
+  expect("占位(气泡): 占位标签必须带内联底色（透明底 = 看不见）",
+    /applyBubbleInlineStyle\s*\(\s*label\s*,\s*(!failed|true|false)/.test(jsSource)
+    || /function\s+applyBubbleInlineStyle\s*\(\s*label\s*,\s*pending/.test(jsSource),
+    "dlchat.js 里没找到（" + jsRef("applyBubbleInlineStyle") + "）");
+  // ③ 大厅 / 展开聊天：第三套结构（ChatLineContainer > ChatLine），走"独立标签"那条路。
+  //    这一条是为了确认占位不是只在气泡上有效 —— 三个界面都扫，哪个漏了都会静默无反馈。
+  const lob = buildLobbyRow(lobbyBox, { text: "go mid", sender: "L" });
+  try { out = String(pending(lob.row, "go mid", "去中路", "keep")); } catch (e) { out = "抛出:" + e; }
+  show("大厅翻译中: " + out);
+  expect("占位(大厅): 大厅行也要认出来并显示占位", out.indexOf("delayed=shown") !== -1, out);
+  expect("占位(大厅): 扫描入口读大厅行要读成纯英文原文（不能被拼进 ···）",
+    out.indexOf('probe={surface=lobby text="go mid"') !== -1, out);
+  expect("占位(大厅): 译文到达后要换成译文、扫描入口仍读成纯英文原文",
+    out.indexOf('after="去中路"') !== -1
+    && out.indexOf('afterProbe={surface=lobby text="go mid"') !== -1, out);
+  lobbyBox._parent.Children = lobbyBox._parent.Children.filter((k) => k !== lobbyBox);
+  note("翻译中占位：延迟 0.4s 才显示、原文读得干净、译文原地替换、行回收后收掉"
+    + "（聊天窗 + 头顶气泡 + 大厅）");
+});
+
+// ================================================================ ⑥c 翻译失败提示
+// 翻不出来的情况和"正在翻"一样没有反馈：英文静静留在那儿、什么都不说。
+// 现在占位原地变成"翻译失败"，同样**不能**被读成消息原文。
+section("翻译失败提示", function () {
+  const failT = hook("DLChatSelfTestPendingFail");
+  if (!failT) { fail("缺少钩子 DLChatSelfTestPendingFail（离线测试台需要它）"); return; }
+  const row = buildChatRow(chatBox, { sender: "Q", text: "need urn" });
+  let out = "";
+  try { out = String(failT(row.row, "need urn")); } catch (e) { out = "抛出:" + e; }
+  show("聊天窗翻译失败: " + out);
+  expect("失败提示(聊天窗): 失败态要标出来", out.indexOf("failed=true") !== -1, out);
+  expect("失败提示(聊天窗): 正文格应写成「英文 | 翻译失败」",
+    out.indexOf('text="need urn' + SEP_PIPE + '翻译失败"') !== -1, out);
+  expect("失败提示(聊天窗): 失败提示不能被当成消息原文读回去",
+    out.indexOf("clean=true") !== -1, out);  expect("失败提示(聊天窗): 停留时间到了要收掉（不能一直挂在那儿）",
+    out.indexOf("cleared=true") !== -1, out);
+  expect("失败提示(聊天窗): 收掉之后那一格要还原成**纯原文**（留一个悬空分隔符 "
+    + "'need urn |' 的话，下一轮扫描会把它当成新消息原文又翻一遍）",
+    out.indexOf('cellAfter="need urn"') !== -1, out);
+
+  const bub = buildBubbleRow(bubbleBox, { text: "need help" });
+  try { out = String(failT(bub.row, "need help")); } catch (e) { out = "抛出:" + e; }
+  show("气泡翻译失败: " + out);
+  expect("失败提示(气泡): 失败提示要带 DLChatFailed 类（暖色，和『进行中』区分开）",
+    out.indexOf("cls=true") !== -1, out);
+  expect("失败提示(气泡): 失败提示不能被当成消息原文读回去",
+    out.indexOf("clean=true") !== -1, out);
+  note("翻译失败提示：占位原地变『翻译失败』、读行仍干净、到点自动收掉");
+});
+
+// ================================================================ ⑥·五 错误文案
+// 玩家看到的那句话必须永远是可读的原因。真机踩过：把整个响应对象传给
+// shortError()，String({}) -> "[object Object]"，游戏里显示
+// "翻译失败，已停止自动重试（[object Object]）" —— 等于没有排查线索。
+section("错误文案", function () {
+  const errs = hook("DLChatSelfTestErrors");
+  if (!errs) { fail("缺少钩子 DLChatSelfTestErrors（离线测试台需要它）"); return; }
+  let out = "";
+  try { out = String(errs()); } catch (e) { out = "抛出:" + e; }
+  show("错误文案自检: " + out);
+
+  expect("错误文案: 传完整响应对象时要取出里面的 error（不是 [object Object]）",
+    out.indexOf("objectRes=API Key 无效") !== -1, out);
+  expect("错误文案: 对象里没有原因时要给一句人话",
+    out.indexOf("objectNoReason=未知错误") !== -1, out);
+  expect("错误文案: 空对象不能说 [object Object]",
+    out.indexOf("emptyObj=未知错误") !== -1, out);
+  expect("错误文案: undefined/null 要有兜底",
+    out.indexOf("undef=") !== -1 && out.indexOf("nullRes=") !== -1, out);
+  expect("错误文案: 机器码要翻译成人话",
+    out.indexOf("codeTimeout=面板无响应") !== -1
+    && out.indexOf('codeTooLong=内容太长') !== -1, out);
+  expect("错误文案: 桥返回的中文说明要原样保留（里面写着去哪配 Key）",
+    out.indexOf("8791/settings") !== -1, out);
+  expect("错误文案: 任何输入形态都不许出现 [object Object]",
+    out.indexOf("BAD_objectString") === -1, out);
+  note("错误文案：对象/空/机器码/中文说明四种形态都能给出一句能照着修的话");
+});
+
 // ================================================================ ⑦ 行回收复用
 section("回收复用", function () {
   if (!hook("DLChatSelfTestRows") || !hook("DLChatSelfTestInline")) return;
@@ -798,7 +957,26 @@ section("样式守卫", function () {
   }
   expect("样式守卫: 行内双语模式要把悬停原文收起来（要有提到 DLChatChatInline 且 visibility: collapse 的规则）",
     hidden, "没找到这样的规则");
-  note("样式守卫：.DLChatTranslation 自带底色 + fit-children，气泡内联底色兜底，行内模式收起悬停原文");
+  // "翻译中"占位：和真译文**共用同一个标签**，几何属性必须一致（否则占位换译文时气泡会跳），
+  // 只有颜色/字号允许不同。这条规则缺了的话，占位在真机上会退化成"没底色的浅色字"。
+  const pendRule = css.match(/\.DLChatPending\s*\{([^}]*)\}/);
+  if (!pendRule) {
+    fail("样式守卫: dlchat.css 里找不到 .DLChatPending 规则（占位会没有底色，等于看不见）");
+  } else {
+    const block = pendRule[1].replace(/\s+/g, " ").trim();
+    expect("样式守卫: .DLChatPending 要自带底色（浅色字画白气泡上 = 看不见）",
+      /background-color\s*:/.test(pendRule[1]), block.slice(0, 90));
+    expect("样式守卫: .DLChatPending 要 width/height: fit-children（和真译文一致，换的时候不跳）",
+      /width\s*:\s*fit-children/.test(pendRule[1]) && /height\s*:\s*fit-children/.test(pendRule[1]),
+      block.slice(0, 90));
+    expect("样式守卫: .DLChatPending 的配色/字号要和 .DLChatTranslation 分得开（一眼看出还没翻好）",
+      /font-size\s*:\s*13px/.test(pendRule[1]) && /opacity\s*:/.test(pendRule[1]),
+      block.slice(0, 90));
+  }
+  expect("样式守卫: 失败提示要有自己的类（.DLChatFailed），颜色和『进行中』分开",
+    /\.DLChatFailed\s*\{/.test(css), "没找到 .DLChatFailed 规则");
+  note("样式守卫：.DLChatTranslation 自带底色 + fit-children，气泡内联底色兜底，行内模式收起悬停原文，"
+    + "占位/失败提示各自有配色");
 });
 
 // ================================================================ ⑩ 运行期消息

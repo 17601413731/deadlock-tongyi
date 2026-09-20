@@ -99,12 +99,40 @@ curl -X POST http://127.0.0.1:8791/api/v1/translate -H "Content-Type: applicatio
 | `/settings` | GET | **配 API Key 的网页**（只有这一个输入框）；游戏没开也能用 |
 | `/api/v1/health` | GET | mod 用它判断"桥是否在运行"，并展示**当前生效来源**（`deepseek:deepseek-flash`）与 `keySet` |
 | `/api/v1/gamenames` | GET | 英雄/物品名表（mod 启动时同步，用于名称保护） |
-| `/api/v1/translate` | POST/GET | `{text, sourceLanguage, targetLanguage}` → `{ok, translation, detectedLanguage}` |
+| `/api/v1/translate` | POST/GET | `{text, sourceLanguage, targetLanguage}` → `{ok, translation, detectedLanguage, truncated?}` |
 | `/api/v1/test` | POST | 面板的「测试」按钮 |
 | `/api/v1/config` | GET/POST | 面板读写配置（本桥只读展示，不含密钥） |
-| `/api/v1/log` | POST | 聊天日志（本桥接受但忽略） |
+| `/api/v1/log` | POST/GET | 游戏侧诊断日志：POST 写一条、`op=read`/`op=clear` 读或清；落盘 `%APPDATA%\deadlock-tongyi\logs\mod.log`（`scripts/mod_log.py` 读） |
 | `/api/v1/models` | GET | 模型列表，**按来源分流**：`?d={"provider":"l"}` 问 Ollama `/api/tags`；云端回固定清单（不联网、省一次串行往返） |
-| `/api/v1/settings` | GET/POST | 不带 `view` = 完整视图（长键 + 掩码密钥）；`view=compact` = 游戏面板用的小包（**短键** `recv/send/disp/out/hover/trig/keep/gloss/prv`，< 380 字符） |
+| `/api/v1/settings` | GET/POST | 不带 `view` = 完整视图（长键 + 掩码密钥）；`view=compact` = 游戏面板用的小包（**短键** `recv/send/disp/out/hover/trig/keep/gloss/ctx/prv`） |
+
+### 翻译响应的字段
+
+| 字段 | 说明 |
+|---|---|
+| `translation` | 译文。**超长会被桥主动截断**（见下），而不是在游戏侧失败 |
+| `truncated` | `true` = 上面那条译文被截断过；mod 显示「译文过长，已截断显示」 |
+| `detectedLanguage` | 真检测结果（`en`/`zh`/`ru`/`el`），不再按方向猜 |
+| `skipped` | 不需要翻：`already_target_language` / `receive_disabled` / `send_disabled` |
+
+### 为什么译文要截断
+
+结果经 HTML 文档标题传回，非 ASCII 全部转义成 `\uXXXX`（一个汉字 = 6 个字符），
+标题超过 900 字符会被整包换成 `payload_too_long`，引擎实测约 479 字符就开始截断。
+而 `MAX_TEXT` 允许 4000 字符的输入 —— 长消息以前必然失败，玩家看到「翻译失败」，
+点开面板是「未知原因」。现在桥按 `TRANSLATION_BUDGET`（英→中 64 / 中→英 56 字符，
+标记用 ASCII 的 `...` 以免再吃掉 6 个字符的预算）在句子边界截断，并如实回报 `truncated`。
+中文的断点只认中文标点（中文没有词边界），英文的断点认空格与 ASCII 标点。
+
+### 源语言与方向
+
+`sourceLanguage` 允许 `auto`（默认）/`zh`/`en`/`ru`/`el`。桥按字面判断：
+汉字 → zh，西里尔 → ru，希腊 → el，其余 → en。
+
+* `ru`/`el` 走**俄语专用 system 提示词**（`prompt.SYSTEM_RU_ZH`），目标是中文时
+  按 `en->zh` 方向处理。以前这些消息在 mod 侧就被判成「非英文」直接丢掉，
+  或者被当英文硬翻、输出夹着没翻的原文又被「无汉字即失败」丢弃 —— 都是静默失败。
+* 目标是英文时 `ru`/`el` 没有对应提示词，桥**原样返回**（不硬翻）。
 
 ### 游戏通道的长度约束（改 compact 字段前必读）
 
@@ -130,7 +158,13 @@ GET 兼容：游戏侧 `$.AsyncWebRequest` 只能发 GET，所以请求体也支
 
 ## 已验证 / 待验证
 
-✅ 桥的协议层：健康检查、名称表、隐藏面板页面、POST/GET 两种调用方式（23 个测试）
+✅ 桥的协议层：健康检查、名称表、隐藏面板页面、POST/GET 两种调用方式、compact 长度门禁
 ✅ 真实翻译：英→中、中→英 都通过本地 Hy-MT2-7B 跑通（上面那张表就是实测输出）
-✅ 游戏侧可行性：BabelTower 已证明 Panorama 能读聊天行、能显示译文、能发送前翻译
-⏳ 待你验证：装 mod + 起桥，进游戏看译文是否正常显示（这一步必须在游戏里做）
+✅ 术语/俚语/黑名单数据：`scripts/check_data_quality.py` 全部通过，239 个单测全绿
+✅ en→zh 评测基线：`scripts/bench_en2zh.py --dry-run` 参考译文 60/60 通过检查
+✅ mod 侧改动：`node scripts/js_check.js` 13 个分节全绿（离线，不用开游戏）
+⏳ **待你在游戏里验证**（这一步只能在真机上做）：
+   · 上下文轮数那一行（面板里切 0/1/2 后译文是否有变化）
+   · 「最近译文」按钮（消息淡出后能否回看）
+   · 翻译失败时是否**只重试 2 次就停**（可以故意把桥关掉试）
+   · 俄语消息是否出中文

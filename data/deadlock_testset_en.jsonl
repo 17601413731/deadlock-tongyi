@@ -1,0 +1,60 @@
+{"en": "mid no", "zh_ref": "中路没人", "terms": ["mid"], "register": "callout", "note": "no 不单独翻，整句是固定喊话「中路没人」"}
+{"en": "Mid no?", "zh_ref": "中路有人吗", "terms": ["mid"], "register": "callout", "note": "首字母大写 + 问号：带问号是在问，不是报点（歧义句）"}
+{"en": "urn", "zh_ref": "魂瓮", "terms": ["urn"], "register": "callout", "note": "官方叫灵瓮、社区多叫魂瓮，两种都算命中"}
+{"en": "contest urn, theyre on it", "zh_ref": "抢魂瓮，他们在打", "terms": ["urn"], "register": "callout", "note": "contest=抢/争，不是「比赛」；真实聊天常不打撇号"}
+{"en": "rejuv", "zh_ref": "复生石", "terms": ["rejuv"], "register": "callout", "note": "rejuv=复生石，不是「恢复」"}
+{"en": "mid boss", "zh_ref": "中区头目", "terms": ["mid boss"], "register": "callout", "note": "写全汉字；写「中路BOSS」会触发未翻译残留"}
+{"en": "dive him", "zh_ref": "越塔杀他", "terms": ["dive"], "register": "callout", "note": "dive=越塔/上，不是「潜水」"}
+{"en": "hes low", "zh_ref": "他残血", "terms": ["low"], "register": "callout", "note": "真实聊天常不打撇号；low=残血"}
+{"en": "hes low dive him", "zh_ref": "他残血，上", "terms": ["low", "dive"], "register": "callout", "note": "bridge.md 实测输出是「他残血，冲啊」，加字不算错但不加更像喊话"}
+{"en": "b", "zh_ref": "撤", "terms": ["b"], "register": "callout", "note": "b=撤；keep_as_is 里也收了 b，两表冲突时 slang 优先"}
+{"en": "def blue", "zh_ref": "守蓝路", "terms": ["def"], "register": "callout", "note": "def=防守/守；Deadlock 是四条彩色线不是上中下"}
+{"en": "gank mid", "zh_ref": "抓中路", "terms": ["gank", "mid"], "register": "callout", "note": "gank=抓人/游走"}
+{"en": "flank them", "zh_ref": "绕后", "terms": ["flank"], "register": "callout", "note": "flank=绕后/包抄"}
+{"en": "care, they're flanking", "zh_ref": "小心，他们绕后", "terms": ["flanking"], "register": "callout", "note": "逗号 + 缩写撇号都是真实聊天里的标点噪声；flanking 靠词形兜底命中 flank=绕后"}
+{"en": "walker on green", "zh_ref": "绿路机甲", "terms": ["walker"], "register": "callout", "note": "walker=机甲（T2），不是「步行者」"}
+{"en": "their shrine is down", "zh_ref": "他们圣坛没了", "terms": ["shrine"], "register": "callout", "note": "shrine=圣坛（官方），社区也说神坛"}
+{"en": "no stamina", "zh_ref": "没耐力", "terms": ["stamina"], "register": "callout", "note": "Deadlock 没有蓝条，耐力才是资源"}
+{"en": "group up mid", "zh_ref": "中路集合", "terms": ["group up"], "register": "callout", "note": "group up=集合，不是「组队」"}
+{"en": "two of them on camps, care", "zh_ref": "两个人在打野，小心", "terms": ["camps"], "register": "callout", "note": "camps=野区营地；glossary_zh 里 farm camps=打野"}
+{"en": "need souls for refresher", "zh_ref": "差点钱买刷新球", "terms": ["souls"], "register": "callout", "note": "souls 三种叫法并存（魂魄/灵魂/钱），喊话里「钱」最口语；Refresher=刷新球"}
+{"en": "deny", "zh_ref": "反补", "terms": ["deny"], "register": "callout", "note": "官方叫「回收」，玩家叫「反补」"}
+{"en": "last hit", "zh_ref": "补刀", "terms": ["last hit"], "register": "callout", "note": "正补；不是「最后打击」"}
+{"en": "haze low", "zh_ref": "岚梦残血", "terms": ["haze", "low"], "register": "callout", "note": "Haze 官方译名岚梦（旧译暗影），取自 gamenames.json 名称表"}
+{"en": "seven no ult", "zh_ref": "柒没大招", "terms": ["seven", "ult"], "register": "callout", "note": "Seven 官方译名柒，社区也叫老七；ult 在两张表里冲突，按 slang 翻"}
+{"en": "on him", "zh_ref": "打他", "terms": [], "register": "callout", "note": "歧义句：没有上一句时 on him 可能是「打他」也可能是「集火他」；知道谁残血/谁落单才能定"}
+{"en": "no", "zh_ref": "别", "terms": [], "register": "callout", "note": "歧义句：单字 no 要看上一句——答「能不能开团」=别，答「他死了没」=没"}
+{"en": "push", "zh_ref": "推", "terms": ["push"], "register": "callout", "note": "歧义句：单个 push 可能是「推线」「推塔」「上」；看兵线位置才能定"}
+{"en": "theyre all mid, group up and push", "zh_ref": "他们全在中路，集合推", "terms": ["mid", "group up", "push"], "register": "callout", "note": "多目标喊话：术语多但句子仍然要短；group up 是集合不是「组队」"}
+{"en": "ty", "zh_ref": "谢谢", "terms": ["ty"], "register": "banter", "note": "ty=谢谢；glossary_zh 里 thanks=谢了/谢谢"}
+{"en": "TY gg", "zh_ref": "谢谢 gg", "terms": ["ty"], "register": "banter", "note": "全大写是常见写法；gg 按 keep_as_is 保留英文"}
+{"en": "gj", "zh_ref": "干得好", "terms": ["gj"], "register": "banter", "note": "gj=good job"}
+{"en": "nice ult, that was clean", "zh_ref": "大招漂亮", "terms": ["ult"], "register": "banter", "note": "夸人话要短；不要把 that was clean 逐字翻成「那很干净」"}
+{"en": "gg", "zh_ref": "gg", "terms": [], "register": "banter", "note": "keep_as_is：gg 保留英文，中国玩家也直接打 gg"}
+{"en": "gg wp :)", "zh_ref": "gg wp :)", "terms": [], "register": "banter", "note": "表情和 keep 词原样保留；:) 别翻成「微笑」"}
+{"en": "lol my bad", "zh_ref": "哈哈，我的", "terms": ["my bad"], "register": "banter", "note": "my bad=我的/我的锅，不是「我坏了」"}
+{"en": "lmao", "zh_ref": "哈哈", "terms": [], "register": "banter", "note": "笑声用叠字，别翻成长句"}
+{"en": "youre cracked", "zh_ref": "你太猛了", "terms": [], "register": "banter", "note": "cracked=很强，不是「裂开」"}
+{"en": "chill dude", "zh_ref": "别急", "terms": [], "register": "banter", "note": "dude 这类称呼中文喊话里一般省掉"}
+{"en": "wp", "zh_ref": "wp", "terms": [], "register": "banter", "note": "wp 在 keep_as_is 和 slang 里都有；保留英文符合中国玩家习惯"}
+{"en": "stop feeding", "zh_ref": "别送了", "terms": ["feeding"], "register": "salt", "note": "feed=送不是「喂」；本项目最典型的一条"}
+{"en": "stop feeding noob", "zh_ref": "别送了，菜鸟", "terms": ["feeding", "noob"], "register": "salt", "note": "bridge.md 实测模型输出就是这句"}
+{"en": "stop feeding and group, we can win", "zh_ref": "别送了，集合还能赢", "terms": ["feeding"], "register": "salt", "note": "骂完还带一句指挥：中文里用逗号断开，不要翻成两个完整句"}
+{"en": "ff", "zh_ref": "投了", "terms": ["ff"], "register": "salt", "note": "ff=认输/投降；glossary_zh 里没有，映射来自 slang.json"}
+{"en": "ez", "zh_ref": "ez", "terms": [], "register": "salt", "note": "ez 没有公认中文说法，keep_as_is 要求保留英文"}
+{"en": "youre trash", "zh_ref": "你真菜", "terms": [], "register": "salt", "note": "真实聊天不打撇号，也不加句号"}
+{"en": "jungle diff", "zh_ref": "打野diff", "terms": ["jungle"], "register": "salt", "note": "diff 保留英文；注意 slang 把 jungle 映射成「野区」而玩家实际说「打野」"}
+{"en": "their abrams is fed, play safe", "zh_ref": "对面亚伯兰太肥了，稳住", "terms": ["fed"], "register": "salt", "note": "Abrams 社区叫「蓝牛」；fed 是被喂肥，不是「喂食」"}
+{"en": "gg go next", "zh_ref": "gg go next", "terms": [], "register": "salt", "note": "整条都在 keep_as_is 里（gg go next），原样保留"}
+{"en": "so much lag", "zh_ref": "太lag了", "terms": [], "register": "salt", "note": "lag 在 keep_as_is 里；中英混排是中文聊天常态"}
+{"en": "why so toxic", "zh_ref": "怎么这么toxic", "terms": [], "register": "salt", "note": "toxic 无公认中文说法，keep_as_is 要求保留英文"}
+{"en": "another smurf", "zh_ref": "又是smurf", "terms": [], "register": "salt", "note": "smurf 保留英文；中文玩家也直接说 smurf"}
+{"en": "tp", "zh_ref": "tp", "terms": [], "register": "logistics", "note": "tp 在 keep_as_is 里，保留英文；中文玩家也直接打 tp"}
+{"en": "brb", "zh_ref": "马上回来", "terms": ["brb"], "register": "logistics", "note": "brb 在 keep_as_is 与 slang 里都有；中文玩家更常说「马上回来」"}
+{"en": "1 min", "zh_ref": "1分钟", "terms": [], "register": "logistics", "note": "数字原样保留，中文里不加空格"}
+{"en": "buying", "zh_ref": "买装备", "terms": [], "register": "logistics", "note": "glossary_zh：买装备=buy items"}
+{"en": "going shop then mid", "zh_ref": "去商店然后来中路", "terms": ["shop"], "register": "logistics", "note": "商店=shop（官方术语）；链条动作按中文语序连成一串"}
+{"en": "swap lanes pls", "zh_ref": "换线吧", "terms": ["swap lanes"], "register": "logistics", "note": "pls 不翻成「请」，中文喊话用「吧」更自然"}
+{"en": "afk 1 min", "zh_ref": "挂机1分钟", "terms": ["afk"], "register": "logistics", "note": "afk 在 keep_as_is 与 slang 里冲突；这里按 slang 翻成挂机"}
+{"en": "im back", "zh_ref": "我回来了", "terms": [], "register": "logistics", "note": "phrases.json 的官方轮盘就是「我回来了」"}
+{"en": "omw", "zh_ref": "在路上", "terms": ["omw"], "register": "logistics", "note": "omw=on my way，中文喊话常说「在路上」"}

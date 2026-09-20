@@ -43,10 +43,28 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
 MOD_SRC = ROOT / "mod" / "panorama"
-DIST = ROOT / "dist_mod"
-# DMM 的导入目录（docs/mod-usage.md 让用户选这个文件夹）。打包时同步一份，
-# 免得"根目录是新的、导入目录还是旧的"这种分叉。
-DMM_IMPORT_DIR = "dlchat_local"
+
+# ---------------------------------------------------------------------------
+# 产物布局：**所有东西都进 build/**，根目录不再散落产物
+# ---------------------------------------------------------------------------
+# 历史教训：这里曾经把产物写在 dist_mod/（两种脚本各写一份）、build_mod/、
+# build_pkgs/、dist/… 根目录一度摆着 5 个产出目录、400 个文件，而真正的交付物
+# 只有 1 个 zip。现在统一成：
+#
+#     build/
+#     ├── tongyi-players.zip        ← 唯一交付物
+#     ├── tongyi-launch.exe         ← 桥（Steam 启动选项 / 排查用）
+#     ├── tongyi-pak01_dir.vpk      ← mod 包（DMM 导入这个 **文件**）
+#     └── .work/…                   ← 中间产物，平时不用看
+#
+# 两个刻意的改动：
+#   1. VPK 只写**一份**。以前为了对齐 DMM 的"选文件夹导入"流程，同一个包写
+#      两份（dist_mod/ 和 dist_mod/dlchat_local/），两份一分叉就会出现"改完
+#      游戏里没变化、还不报错"。现在 DMM 直接选这个文件，不需要第二份。
+#   2. 中间产物带点前缀（`.work`），排在文件管理器里最下面，不会和交付物混在一起。
+BUILD = ROOT / "build"
+WORK = BUILD / ".work"
+VPK_NAME = "tongyi-pak01_dir.vpk"
 
 CSDK_ROOT = Path(r"D:\csdk12\Reduced_CSDK_12")
 CSDK_COMPILER = CSDK_ROOT / "game" / "bin_cs2" / "win64" / "resourcecompiler.exe"
@@ -251,23 +269,13 @@ def pack(game_pano: Path) -> Path:
     if missing:
         raise SystemExit(f"[pack] 包内缺少关键资源（游戏会静默忽略）: {missing}")
 
-    out = DIST / "pak01_dir.vpk"
+    out = BUILD / VPK_NAME
+    out.parent.mkdir(parents=True, exist_ok=True)
     write_vpk(files, out)
-    # 同时刷新 DMM 的导入目录（dist_mod\dlchat_local\）。
-    # 为什么要两份：`docs/mod-usage.md` 让用户"选中文件夹 dist_mod\dlchat_local 导入"，
-    # 而打包器只写 dist_mod\ 根目录 —— 两份文件就此分叉。实测踩到：根目录是新的、
-    # dlchat_local 里还是上一次的旧包，照文档导入等于把旧代码装进游戏，
-    # 表现是"改了但游戏里没变化"，而且没有任何报错。
-    dmm_dir = DIST / DMM_IMPORT_DIR
-    try:
-        dmm_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(out, dmm_dir / out.name)
-        print(f"[pack] 同步 DMM 导入目录 -> {dmm_dir / out.name}")
-    except OSError as e:
-        print(f"[pack] ⚠ 同步 DMM 导入目录失败（不影响根目录产物）: {e}")
     print(f"[pack] {len(files)} 个文件 -> {out} ({out.stat().st_size} B)")
     for name in read_vpk_index(out):
         print(f"        {name}")
+    print(f"[pack] 在 DMM 里导入这个**文件**: {out}")
     return out
 
 
@@ -276,7 +284,7 @@ def install(vpk: Path, targets: list[str] | None = None) -> None:
 
     DMM 会把导入的包按加载顺序重命名成 `pakNN_dir.vpk`（我们这边它改成了
     `pak02_dir.vpk`），所以不能只认 `pak01_dir.vpk`：`--targets` 用来显式补上，
-    另外会在 dist_mod/installed.json 里记住"上一版写过的路径 + 内容哈希"，
+    另外会在 build/.work/installed.json 里记住"上一版写过的路径 + 内容哈希"，
     下次自动跟着 DMM 的改名走（只覆盖内容还是我们上一版的文件，不动别人的）。
     """
     GAME_ADDONS.mkdir(parents=True, exist_ok=True)
@@ -308,7 +316,7 @@ def install(vpk: Path, targets: list[str] | None = None) -> None:
     _save_manifest({"hash": digest, "paths": written})
 
 
-MANIFEST = DIST / "installed.json"
+MANIFEST = WORK / "installed.json"
 
 
 def _sha256(path: Path) -> str:

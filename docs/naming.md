@@ -19,10 +19,9 @@
 | `dlchat/single_instance.py` `MUTEX_NAME` | 单实例互斥体 |
 | `dlchat/launcher.py` `LAUNCHER_MUTEX` | 启动器互斥体 —— **必须和上面那个同一批改**，只改一个的话新老版本互相看不见，能各起一份抢热键 |
 | `pyproject.toml` `name` / `[project.scripts]` | 包名 `deadlock-tongyi`；控制台脚本名保留 `dlchat-launch`（不是玩家可见的名字，改了反而让文档里的 `dlchat-launch --stay` 失效） |
-| `packaging/deadlock-tongyi.spec` | 产出 `dist\deadlock-tongyi\{deadlock-tongyi.exe, deadlock-tongyi-cli.exe}` |
-| `packaging/bridge.spec` | 产出 `dist\bridge\{tongyi-launch.exe, tongyi-launch-cli.exe}` |
-| `build.bat`、`make_launch_option.bat`、`packaging/player/START_HERE.bat`、`packaging/package_player_zip.bat`、`start_bridge.bat`、`install.bat` | 产物路径、进程名（`taskkill /IM tongyi-launch.exe`）、提示文案 |
-| `packaging/package_player_zip.bat` | 玩家包：`dist\deadlock-tongyi-players.zip`，内含 `tongyi_launch\` + `mod\tongyi-pak01_dir.vpk` |
+| `packaging/bridge.spec` | 产出 `build\.work\bridge\{tongyi-launch.exe, tongyi-launch-cli.exe}` |
+| `make_launch_option.bat`、`packaging/player/START_HERE.bat`、`packaging/package_player_zip.bat`、`start_bridge.bat` | 产物路径、进程名（`taskkill /IM tongyi-launch.exe`）、提示文案 |
+| `packaging/package_player_zip.bat` | 玩家包：`build\tongyi-players.zip`，内含 `tongyi_launch\` + `mod\tongyi-pak01_dir.vpk` |
 
 ### `%APPDATA%` 迁移（别删）
 
@@ -40,9 +39,8 @@
 |---|---|
 | `mod/panorama/layout/chat.xml` | 状态行初值 `通译`（兼作"布局有没有生效"探针）；面板标题 `通译 · 聊天翻译设置` |
 | `mod/panorama/scripts/dlchat.js` | 状态灯文案 `通译 就绪 / 桥不通 / 脚本错误 / 通道 / 探针`；`MOD_TAG = "tongyi-mod/1.0.0"`；命令 `/tongyi`、`/通译`、`/设置`、`/cfg`，旧的 `/dlchat` 仍然可用 |
-| `dlchat/ui/panel.py` | 桌面主窗口标题 `通译 · Deadlock 聊天翻译` |
 | `dlchat/bridge/settings_page.py` | 网页标题 `通译 · API Key` |
-| 玩家文档 ×4 | `packaging/player/README-zh.txt`、`packaging/player/MOD-README-zh.txt`、`scripts/README-zh.txt`、`scripts/MOD-README-zh.txt`（四份内容各不相同，改一份不会同步另外三份） |
+| 玩家文档 ×2 | `packaging/player/README-zh.txt`（总说明）、`packaging/player/MOD-README-zh.txt`（补丁说明）。**只有这两份**会进玩家包（`package_player_zip.bat` 从这里拷），改完记得重新打包 |
 
 改 `/命令` 时注意 `checkSettingsCommand()` 里的比较方式：中文别名要原样比，
 只有 ASCII 命令能 `toLowerCase()`。
@@ -63,15 +61,14 @@
 ## 改完之后的手工动作
 
 1. **工作目录改名**（可选）：`deadlock-fanyi\` → `deadlock-tongyi\`。
-   已知会连带失效的地方：`tests/test_filter_desktop.py` 里那条桌面垃圾样例路径（已按新目录名
-   写好）、文档里的 `cd` 路径、`.idea` 工程配置，以及 **Steam 启动选项里那条绝对路径**
-   （重跑 `make_launch_option.bat` 再粘一次即可）。
-2. `python scripts/stage_compile.py --install`（或 `install_mod.bat`）重新打包 mod，游戏里才会
+   已知会连带失效的地方：文档里的 `cd` 路径、`.idea` 工程配置，以及
+   **Steam 启动选项里那条绝对路径**（重跑 `make_launch_option.bat` 再粘一次即可）。
+2. `python scripts/stage_compile.py --pack` 重新打包 mod，再到 DMM 里重新导入，游戏里才会
    显示新名字。**改名字不改变 VPK 的内部结构**，所以旧包照常能跑，只是还写着 dlchat。
-3. 桌面端/启动器重新打包：`build.bat`、`packaging\package_player_zip.bat`。
+3. 启动器重新打包：`python -m PyInstaller --clean --noconfirm --distpath build/.work --workpath build/.work/pyinstaller packaging\bridge.spec`
+   然后 `packaging\package_player_zip.bat`。
 
 ## 顺带说明（与命名无关，别改错）
 
-* `fanyi-v5`（出现在 `dlchat/translate/client.py`、`dlchat/ui/overlay.py`、`docs/packaging.md`）
-  是**另一个语音翻译项目**，不是本项目的旧名。
+* `fanyi-v5`（出现在 `dlchat/translate/client.py`）是**另一个语音翻译项目**，不是本项目的旧名。
 * `dlchat.js` 的 header 注释、`[dlchat]` 日志前缀属于 C 层，保持不动。

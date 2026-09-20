@@ -70,6 +70,36 @@
 	font-size: 15px;
 }
 
+/* "翻译中"占位和"翻译失败"提示。
+   ────────────────────────────────────────────────────────────────
+   和 .DLChatTranslation 是**同一个标签**（脚本翻好后原地换文字、换类），所以这里的
+   每条几何属性都必须和真译文一致（width/height: fit-children、margin、padding）——
+   不然"占位 → 译文"这一下会让气泡跳一下。只有颜色/字号是弱的，用来区分状态。
+   注意：**不能**给 .DLChatFailed 换底色深浅以外的东西，它在聊天窗里会顶到正文那一格上。 */
+.DLChatPending {
+	color: #cfe8ff;
+	opacity: 0.8;
+	font-size: 13px;
+	font-weight: 500;
+	background-color: rgba(20, 52, 96, 0.55);
+	border: 1px solid rgba(120, 180, 255, 0.3);
+	border-radius: 4px;
+	padding: 3px 8px;
+	margin-top: 3px;
+	margin-left: 58px;
+	max-width: 290px;
+	width: fit-children;
+	height: fit-children;
+	white-space: normal;
+	text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* 失败提示：暖色，一眼和"进行中"分得开（气泡那一路还有内联样式兜底） */
+.DLChatFailed {
+	color: #ffd7a8;
+	opacity: 0.9;
+}
+
 /* 悬停才显示的英文原文（替换模式） */
 .DLChatOriginal {
 	visibility: collapse;

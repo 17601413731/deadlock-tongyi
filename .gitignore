@@ -6,25 +6,34 @@ __pycache__/
 .venv/
 venv/
 
-# ---- 构建产物 ----
-# PyInstaller 输出与中间产物（build_pkgs 里有十几 MB 的 .pkg/.toc/.pyz）
+# ---- 构建产物：全部收在 build/ 一个目录里 ----
+#     build/
+#     ├── tongyi-players.zip       ← 唯一交付物
+#     ├── tongyi-launch.exe        ← 桥（Steam 启动选项 / 排查用）
+#     ├── tongyi-pak01_dir.vpk     ← mod 包（DMM 导入这个文件）
+#     └── .work/                   ← 中间产物（PyInstaller、mod 编译暂存、打包暂存）
+# 整条链重建：
+#   python scripts\stage_compile.py --pack           → build\tongyi-pak01_dir.vpk
+#   python -m PyInstaller --clean --noconfirm --distpath build/.work --workpath build/.work/pyinstaller packaging\bridge.spec
+#   packaging\package_player_zip.bat                 → build\tongyi-players.zip
+# 磁盘不够时 `rm -rf build` 即可，什么都不影响。
 build/
+# 历史目录名（2026-09-20 收敛前用过），留着忽略以免老工作区又被跟踪进来
 build_pkgs/
+build_mod/
 dist/
 dist_mod/
-# mod 编译暂存区：由 scripts/build_mod.py 生成，里面还有从游戏 vpk 反解出来的
-# vanilla 文件（Valve 的内容），不该进仓库。重新生成：
-#   python scripts/build_mod.py            编译 + 打包
-#   python scripts/stage_compile.py --pack 出 dist_mod\dlchat_local\pak01_dir.vpk
-build_mod/
 *.spec.bak
 
-# ---- 运行期产物（校准截图、崩溃现场、日志）----
+# ---- 运行期产物（日志、抓帧调试输出）----
+# spike_out/ 是桌面版（OCR 校准）时代留下的目录名，老用户的 %APPDATA%\deadlock-fanyi\
+# 里可能还有，迁移逻辑照搬不误，所以这里继续忽略。
 spike_out/
 logs/
 *.log
 config.local.yaml
-!build_log.txt
+# 英→中 benchmark 的"上一次结果"：每跑一次就覆盖，属于本机产物（scripts/bench_en2zh.py 写）
+data/bench_en2zh_last.json
 
 # ---- 第三方专有二进制：不放仓库 ----
 # tools/ 装的是 Valve 的 CSDK 12 工具链（resourcecompiler）和 Source2Viewer。

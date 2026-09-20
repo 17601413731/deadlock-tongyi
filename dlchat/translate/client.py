@@ -95,8 +95,11 @@ def build_http_client(base_url: str, timeout_s: float) -> httpx.AsyncClient | No
 
 # 小模型可能漏出来的控制符 / 特殊 token
 _CONTROL_RE = re.compile(r"<[｜|][^>]*[｜|]>|<\|[^|]*\|>|</?s>|<eos>|<pad>")
-# 模型把提示词里的 "TERMS: a=b; c=d" 那行当正文抄进译文了（实测 1.8B 会这样）
-_TERMS_LEAK_RE = re.compile(r"^\s*TERMS\s*[:：].*$", re.I | re.M)
+# 模型把提示词里的 "TERMS: a=b; c=d" / "LOCKED: ..." 那行当正文抄进译文了
+# （实测 1.8B 会这样）
+_TERMS_LEAK_RE = re.compile(r"^\s*(?:TERMS|LOCKED)\s*[:：].*$", re.I | re.M)
+# 连同 LOCKED 下面那句中文说明一起吃掉（模型偶尔会连着抄）
+_LOCKED_NOTE_RE = re.compile(r"^\s*（LOCKED[^）]*）\s*$", re.M)
 # 模型爱加的前缀
 _PREFIX_RE = re.compile(
     r"^\s*(翻译|译文|中文|英文|translation|translated|output|english|chinese)\s*[:：]\s*",
@@ -136,8 +139,13 @@ class ChatTranslator:
 
     # ---------- 公共 API ----------
 
-    async def translate(self, text: str, direction: str) -> AsyncIterator[str]:
-        """流式翻译；调用方拼接 token 即可。"""
+    async def translate(self, text: str, direction: str,
+                        source_lang: str = "en") -> AsyncIterator[str]:
+        """流式翻译；调用方拼接 token 即可。
+
+        source_lang 只影响 system 提示词的选择（英/俄各一套），
+        不影响方向判定 —— 方向由桥按 target 决定。
+        """
         text = (text or "").strip()
         self.last_error = ""
         if not text:
@@ -148,7 +156,7 @@ class ChatTranslator:
             yield exact
             return
 
-        prepared, stash = self._prepare(text, direction)
+        prepared, stash, locked = self._prepare(text, direction)
         # 俚语替换后整句已经没有拉丁字母（ty / b b b / gg / thx 这类）：
         # 该翻的都在词典里翻好了，直接返回，省一次模型调用，
         # 也避免模型把替换后的"谢谢"又翻成"没事"这种莫名其妙的结果。
@@ -159,13 +167,14 @@ class ChatTranslator:
                 yield done
                 return
 
-        terms = self.glossary.terms_for(prepared, direction,
-                                        limit=self.cfg.max_glossary_terms)
+        terms = self._hints_for(prepared, direction, locked)
         messages = build_messages(
             prepared, direction, terms,
             keep_all=self.glossary.keep,
             history=self._history_for(direction),
             extra=self.cfg.system_extra,
+            locked=locked,
+            source_lang=source_lang,
         )
 
         result = ""
@@ -219,15 +228,18 @@ class ChatTranslator:
             if attempt < self.cfg.max_retries:
                 await asyncio.sleep(0.4 * (attempt + 1))
 
-    async def translate_full(self, text: str, direction: str) -> str:
+    async def translate_full(self, text: str, direction: str,
+                             source_lang: str = "en") -> str:
         """非流式便捷接口，返回清洗后的最终译文。"""
         self.last_clean = ""
         self.last_error = ""
         buf = ""
         self._last_direction = direction
-        async for token in self.translate(text, direction):
+        self._last_source_lang = source_lang
+        async for token in self.translate(text, direction, source_lang):
             buf += token
-        out = self.last_clean or self._postprocess(buf, {}, direction, text)
+        out = self.last_clean or self._postprocess(buf, {}, direction, text,
+                                                   source_lang=source_lang)
         # 一个字都没产出、而且请求也没报错 —— 最可能是模型把整段输出都当成了思考
         # （DeepSeek 思维链走 reasoning_content，不进 content）。给个能照着修的提示，
         # 而不是让调用方只看到"空译文"。
@@ -308,19 +320,51 @@ class ChatTranslator:
             logger.debug("短语直译命中: %r -> %r", text, hit)
         return hit
 
-    def _prepare(self, text: str, direction: str) -> tuple[str, dict[str, str]]:
+    def _prepare(self, text: str, direction: str) -> tuple[str, dict[str, str],
+                                                          list[tuple[str, str]]]:
+        """译前改写。返回 (改写后文本, 占位符表, 已预先译好的词表)。"""
         if direction == "en->zh":
             return self.glossary.apply_slang(text)
-        return text, {}
+        return text, {}, []
+
+    def _hints_for(self, prepared: str, direction: str,
+                   locked: list[tuple[str, str]]) -> list[tuple[str, str]]:
+        """给提示词准备**术语表命中**项（不含 locked，那一份单独传给 build_messages）。
+
+        `locked` 里的词已经在译前被替换成中文了，属于最高优先级的约束
+        （就是它们决定了正文里那几个中文字的读法），由 prompt 层单独渲染成 LOCKED 行；
+        这里只负责把术语表命中项去重后给它 —— 同一个来源词不能两个地方都出现，
+        否则提示行逐字重复，白烧 token 还容易让模型当成两件事。
+
+        以前这里只查术语表，而正文已经被改写 —— 结果最该锁术语的那些短句
+        （"push mid and get urn"）一条 TERMS 都拿不到。
+        """
+        limit = max(int(self.cfg.max_glossary_terms), 0)
+        if not limit:
+            return []
+        taken = {src.lower() for src, _ in locked}
+        out: list[tuple[str, str]] = []
+        for src, dst in self.glossary.terms_for(prepared, direction,
+                                                limit=limit + len(taken)):
+            if src.lower() in taken:
+                continue
+            taken.add(src.lower())
+            out.append((src, dst))
+            if len(out) >= limit:
+                break
+        return out
 
     def _history_for(self, direction: str) -> list[tuple[str, str]]:
-        if self.cfg.context_window <= 0:
+        # 对称地：发送方向不带上文（见 _remember）
+        if self.cfg.context_window <= 0 or direction != "en->zh":
             return []
         hist = self._history.get(direction)
         return list(hist) if hist else []
 
     def _remember(self, direction: str, src: str, dst: str) -> None:
-        if self.cfg.context_window <= 0:
+        # 只给**接收**方向记上下文：发送方向是"我自己要说的话"，
+        # 屏幕上别人的聊天历史对它没有消歧价值，只会白烧 token。
+        if self.cfg.context_window <= 0 or direction != "en->zh":
             return
         hist = self._history.get(direction)
         if hist is None:
@@ -339,9 +383,10 @@ class ChatTranslator:
             self._last_request = time.monotonic()
 
     def _postprocess(self, raw: str, stash: dict[str, str], direction: str,
-                     source: str = "") -> str:
+                     source: str = "", source_lang: str = "en") -> str:
         text = _CONTROL_RE.sub("", raw or "").strip()
-        text = _TERMS_LEAK_RE.sub("", text).strip()   # 去掉被抄进来的 TERMS 行
+        text = _TERMS_LEAK_RE.sub("", text).strip()   # 去掉被抄进来的 TERMS/LOCKED 行
+        text = _LOCKED_NOTE_RE.sub("", text).strip()
         text = _PREFIX_RE.sub("", text)
         text = text.strip(_QUOTE_CHARS).strip()
         text = re.sub(r"\s*\n+\s*", " ", text)
@@ -353,9 +398,12 @@ class ChatTranslator:
         if _REFUSAL_RE.search(text) and len(text) > 8:
             logger.warning("疑似拒绝/道歉输出，丢弃: %r", text[:60])
             return ""
-        # 英->中：整句还是纯拉丁字母，多半是复读原文或输出拼音 -> 当失败处理（会触发重试）
+        # 英/俄 -> 中：整句没有一个汉字，多半是复读原文或输出拼音
+        # -> 当失败处理（会触发重试）。俄语方向尤其重要：西里尔字母被原样
+        # 带回来时，玩家看到的是一串看不懂的俄文，比"翻译失败"更糟。
         if (direction == "en->zh" and len(text) > 12
                 and not re.search(r"[\u4e00-\u9fff]", text)):
-            logger.warning("译文疑似未翻译（无汉字），丢弃: %r", text[:60])
+            logger.warning("译文疑似未翻译（无汉字，源语言 %s），丢弃: %r",
+                           source_lang, text[:60])
             return ""
         return text

@@ -70,7 +70,48 @@ MAX_BODY = 64 * 1024           # 与 BabelTower 一致的请求体上限
 MAX_TEXT = 4000                # 单条文本上限
 BRIDGE_VERSION = "1.0.0"
 
+# 回给游戏侧译文的**字符预算**。这不是审美问题，是通道的硬约束：
+#   1) 结果要经 HTML 文档标题传回（server.py 里 bridge_page 的 asciiJson），
+#      所有非 ASCII 都被转成 \uXXXX —— **一个汉字 = 6 个字符**；
+#   2) 标题超过 900 字符会被整包替换成 payload_too_long；
+#   3) 引擎实测约 479 字符就开始截断（docs/bridge.md）。
+# 于是"整包"（含 displayMode/keySet 等 hints，约 260 字符）只能装下这么多：
+#   预算 × 6 + 260 < 900  →  预算 ≈ 100 字符以内，取 60 留足安全余量
+# （英文预算按"每个字符都可能被转义"的最坏情况算 —— 译文里出现一个全角标点
+#   或中文引号就会走 6 倍路径，所以不能因为"英文是 ASCII"就放宽）。
+# 而 MAX_TEXT 允许 4000 字符的输入 —— 长消息以前必然撞门禁，玩家看到的是
+# "翻译失败"，点开面板是"未知原因"。现在主动截断并**明确告诉前端**，
+# 让游戏里能提示"译文过长，已截断"。
+TRANSLATION_BUDGET = {"en->zh": 64, "zh->en": 56}
+# 截断标记刻意用**纯 ASCII**：整包会被转义成 \uXXXX，一个非 ASCII 字符要占 6 个字符，
+# 用 "…" 反而会把预算吃掉 6 个位置（等于白白少显示 5 个汉字）。ASCII 标记 = 1 个字符。
+TRUNCATION_SUFFIX = " ..."
+
+
+def fit_translation(text: str, direction: str) -> tuple[str, bool]:
+    """把译文压进通道预算；返回 (文本, 是否截断)。
+
+    截断位置按**目标语言**选断点：
+      · 中文（en->zh）没有词边界，所以只认中文标点（。！？；、）——绝不能拿空格
+        当断点，否则整段中文会被判成"没有断点"从而硬切，看起来像被吃了半句；
+      · 英文（zh->en）认空格和 ASCII 标点，保证不切断单词。
+    实在找不到断点就硬截 —— 宁可少半句，也不要让玩家看到"翻译失败"。
+    """
+    budget = TRANSLATION_BUDGET.get(direction, 100) - len(TRUNCATION_SUFFIX)
+    if len(text) <= budget + len(TRUNCATION_SUFFIX):
+        return text, False
+    head = text[:budget]
+    marks = "。！？；、" if direction == "en->zh" else " \t.!?;,\n"
+    cut = max(head.rfind(ch) for ch in marks)
+    if cut >= budget // 2:            # 找到一个像句尾/词尾的位置
+        head = head[:cut + 1]
+    return head.rstrip() + TRUNCATION_SUFFIX, True
+
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+# 非拉丁字母的语言（亚服/欧服混排里俄语很常见）。以前这些消息在 mod 侧就被丢掉，
+# 或者被当成英文送进"英译中"的提示词 —— 两者都是静默失败。
+CYRILLIC_RE = re.compile(r"[\u0400-\u04ff]")
+GREEK_RE = re.compile(r"[\u0370-\u03ff]")
 
 # 来源在游戏通道里的单字母编码（字段名和取值都要短，见 settings_view 的注释）
 _PROVIDER_CODE = {"local": "l", "deepseek": "d", "openai": "o"}
@@ -287,19 +328,24 @@ class BridgeApp:
         # "model is required" —— 玩家看不懂，也猜不到要回面板点一下模型。
         if not (self.settings.model or "").strip():
             return {"ok": False,
-                    "error": "还没选翻译模型：游戏内按 F8 打开面板 → 点「翻译模型」选一个",
+                    "error": "还没选翻译模型：聊天框输入 /tongyi 打开面板 → 点「翻译模型」选一个",
                     **self._ui_hints()}
 
         started = time.perf_counter()
+        # 源语言：用于挑提示词（英/俄各一套）。mod 会把俄语按字面报上来，
+        # 没报就按文本自己判断 —— 不能把俄语当英文硬翻。
+        # 必须在缓存查询之前算出来：缓存命中那条回包也要带上它。
+        src_lang = self._detect_language(text)
         cached = self.cache.get(text, direction)
         if cached:
             self.stats["cache_hits"] += 1
             return {"ok": True, "translation": cached,
-                    "detectedLanguage": self._detected(direction), "viaCache": True,
+                    "detectedLanguage": self._detected(direction, src_lang), "viaCache": True,
                     **self._ui_hints()}
 
         try:
-            out = self._run_async(self.translator.translate_full(text, direction))
+            out = self._run_async(self.translator.translate_full(text, direction,
+                                                                 src_lang))
         except Exception as e:  # noqa: BLE001
             self.stats["errors"] += 1
             detail = describe_error(e)
@@ -317,8 +363,18 @@ class BridgeApp:
         self.cache.put(text, direction, out)
         self._record_latency(direction, (time.perf_counter() - started) * 1000)
         self._last_activity = time.time()      # keep-alive 用它判断"刚翻译过"
-        return {"ok": True, "translation": out,
-                "detectedLanguage": self._detected(direction), **self._ui_hints()}
+        raw_len = len(out)
+        out, truncated = fit_translation(out, direction)
+        if truncated:
+            logger.info("译文超出通道预算，已截断（%s，%d -> %d 字）",
+                        direction, raw_len, len(out))
+        result = {"ok": True, "translation": out,
+                  "detectedLanguage": self._detected(direction, src_lang), **self._ui_hints()}
+        if truncated:
+            # 前端据此提示"译文过长，已截断"——以前这种情况直接是通道截断 +
+            # "翻译失败/未知原因"，玩家完全不知道发生了什么
+            result["truncated"] = True
+        return result
 
     def _record_latency(self, direction: str, ms: float) -> None:
         bucket = self._latencies.setdefault(direction, [])
@@ -372,6 +428,9 @@ class BridgeApp:
                 "trig": view["trigger"],
                 "keep": view["keep_alive"],
                 "gloss": view["glossary"],
+                # 上下文轮数（0/1/2）：短句消歧用，游戏内面板可改。
+                # 短键 ctx —— 这个包要经 HTML 标题通道传回，长度是硬约束。
+                "ctx": view["context_rounds"],
                 "model": view["model"],
                 # 来源用单字母码 "l"/"d"/"o"：见 COMPACT_SOFT_LIMIT 上面的注释
                 "prv": _PROVIDER_CODE.get(self.settings.provider, "o"),
@@ -743,8 +802,30 @@ class BridgeApp:
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result(120)
 
     @staticmethod
-    def _detected(direction: str) -> str:
+    def _detected(direction: str, src_lang: str = "") -> str:
+        """回包里的 detectedLanguage。
+
+        以前这里是"按方向猜"（en->zh 一律报 en），俄语消息会被报成英文 ——
+        面板上的"检测语言"是假的，排查时会把人带偏。现在优先用真检测结果。
+        """
+        if src_lang in ("zh", "en", "ru", "el"):
+            return src_lang
         return "en" if direction == "en->zh" else "zh"
+
+    @staticmethod
+    def _detect_language(text: str) -> str:
+        """按字面判断源语言，给提示词和方向用。
+
+        返回 "zh" / "ru" / "el" / "en"。判断顺序很重要：中文优先（汉字最独特），
+        其次是西里尔/希腊字母，剩下的当英文。
+        """
+        if CJK_RE.search(text):
+            return "zh"
+        if CYRILLIC_RE.search(text):
+            return "ru"
+        if GREEK_RE.search(text):
+            return "el"
+        return "en"
 
     @staticmethod
     def _direction(text: str, source: str, target: str) -> str | None:
@@ -756,10 +837,16 @@ class BridgeApp:
             return None if want_zh else "zh->en"
         if src.startswith("en"):
             return "en->zh" if want_zh else None
-        # auto：按文本自己判断（有汉字 = 中文）
-        is_zh = bool(CJK_RE.search(text))
-        if is_zh:
-            return None if want_zh else "zh->en"
+        # 俄语/希腊语：目标不是中文时没有对应的提示词，直接原样返回（不硬翻）
+        if src.startswith(("ru", "el")):
+            return "en->zh" if want_zh else None
+        # auto：按文本自己判断（汉字最独特，其次西里尔/希腊，剩下当英文）
+        if src == "auto":
+            detected = BridgeApp._detect_language(text)
+            if detected == "zh":
+                return None if want_zh else "zh->en"
+            if detected in ("ru", "el"):
+                return "en->zh" if want_zh else None
         return "en->zh" if want_zh else None
 
 

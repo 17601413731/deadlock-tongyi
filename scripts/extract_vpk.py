@@ -3,7 +3,7 @@
 用法：
     python scripts/extract_vpk.py --list panorama/layout/chat
     python scripts/extract_vpk.py --grep "chat" --limit 40
-    python scripts/extract_vpk.py --extract panorama/styles/chat.vcss_c -o build_mod/vanilla
+    python scripts/extract_vpk.py --extract panorama/styles/chat.vcss_c -o build/.work/vanilla
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ def main() -> int:
     ap.add_argument("--grep", help="正则匹配路径")
     ap.add_argument("--limit", type=int, default=60)
     ap.add_argument("--extract", nargs="*", help="要提取的完整 vpk 内路径")
-    ap.add_argument("-o", "--out", default=str(ROOT / "build_mod" / "vanilla"))
+    ap.add_argument("-o", "--out", default=str(ROOT / "build" / ".work" / "vanilla"))
     args = ap.parse_args()
 
     vpk = Path(args.vpk)

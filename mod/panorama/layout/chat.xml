@@ -142,6 +142,15 @@
 						<Label id="DLChatSet_trigger_l" text="两下空格" />
 					</Button>
 				</Panel>
+				<!-- [dlchat] 上下文轮数：短句消歧（"on him"/"no" 这类没有上句就没法翻）。
+				     0 = 每句独立（最省 token）；1 = 记住刚过去那一句（默认）；2 = 再往前一句。
+				     只作用于"收到的消息"方向 —— 自己要说的话不需要屏幕上别人的历史。 -->
+				<Panel id="DLChatSetRowCtx" class="DLChatSetRow" onmouseactivate="DLChatCycle('context_rounds');">
+					<Label class="DLChatSetKey" text="上下文（收到的消息）" />
+					<Button id="DLChatSet_ctx" class="DLChatSetVal" onactivate="DLChatCycle('context_rounds');">
+						<Label id="DLChatSet_ctx_l" text="带 1 轮（推荐）" />
+					</Button>
+				</Panel>
 				<!-- [dlchat] 翻译来源：本地 Ollama（不出网）/ DeepSeek 云端（聊天内容会出网）。
 				     放在「模型常驻」之前：来源决定下面那个模型列表里有什么，也决定常驻有没有意义。 -->
 				<Panel id="DLChatSetRowProvider" class="DLChatSetRow" onmouseactivate="DLChatCycle('provider');">
@@ -196,6 +205,11 @@
 				<!-- [dlchat] 翻错了/超时了的补救手段（桌面版有 Alt+R，mod 之前没有） -->
 				<Button id="DLChatSetRetranslate" class="DLChatBtn" onactivate="DLChatRetranslateLast();">
 					<Label text="重译最近一条" />
+				</Button>
+				<!-- [dlchat] 消息 10 秒就淡出了，翻错了/当时没顾上看就再也找不回来。
+				     这个按钮把本次对局里翻过的最近若干条列在状态区，可以事后回看。 -->
+				<Button id="DLChatSetHistory" class="DLChatBtn" onactivate="DLChatShowHistory();">
+					<Label text="最近译文" />
 				</Button>
 				<Button id="DLChatSetReload" class="DLChatBtn" onactivate="DLChatReloadSettings();">
 					<Label text="重新读取" />

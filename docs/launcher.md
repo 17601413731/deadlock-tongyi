@@ -35,7 +35,7 @@ Steam 的「启动选项」原本就是给游戏加参数的。我们把它改�
 粘贴进去的内容长这样（路径按你机器上的位置）：
 
 ```
-"C:\Users\你\Desktop\AiApp\deadlock-tongyi\dist\bridge\tongyi-launch.exe" %command%
+"C:\Users\你\Desktop\AiApp\deadlock-tongyi\build\tongyi-launch\tongyi-launch.exe" %command%
 ```
 
 > ⚠️ 那对引号不能删：路径里有空格，少了引号 Steam 会把整串当成游戏的参数。
@@ -72,7 +72,7 @@ cmd.exe 解析 `.bat` 是**按字节**来的。某些汉字的 UTF-8 字节里�
 
 ## 开发时（没打包也能用）
 
-`make_launch_option.bat` 在找不到 `dist\bridge\tongyi-launch.exe` 时会自动退回到源码模式：
+`make_launch_option.bat` 在找不到 `build\tongyi-launch\tongyi-launch.exe` 时会自动退回到源码模式：
 
 ```
 pythonw -m dlchat.launcher %command%
@@ -83,11 +83,12 @@ pythonw -m dlchat.launcher %command%
 ## 打包（发给别人时）
 
 ```powershell
-python -m PyInstaller --clean --noconfirm --distpath dist --workpath build_pkgs packaging\bridge.spec
+python -m PyInstaller --clean --noconfirm --distpath build/.work --workpath build/.work/pyinstaller packaging\bridge.spec
 ```
 
-产出 `dist\bridge\`：`tongyi-launch.exe`（无窗口，给 Steam 用）+ `tongyi-launch-cli.exe`
-（有窗口，排查用）。这个包**不含**桌面界面、OCR 那一套 —— 聊天翻译这条链路用不到它们。
+产出 `build\.work\bridge\`：`tongyi-launch.exe`（无窗口，给 Steam 用）
++ `tongyi-launch-cli.exe`（有窗口，排查用）。这个包**不含**桌面界面、OCR 那一套
+—— 聊天翻译这条链路用不到它们。
 
 ## 打成能直接发给玩家的 zip
 
@@ -95,9 +96,11 @@ python -m PyInstaller --clean --noconfirm --distpath dist --workpath build_pkgs 
 packaging\package_player_zip.bat
 ```
 
-它做三件事：把玩家文件（`START_HERE.bat` + `README-zh.txt`）拷进 `dist\bridge\`、
-把 `config.yaml` 也提到根目录（PyInstaller 默认会把它塞进 `_internal\`，
-玩家打开文件夹看不到它）、然后压成 `dist\deadlock-tongyi-players.zip`（约 36MB）。
+它做四件事：把玩家文件（`START_HERE.bat` + `README-zh.txt`）拷进暂存区、
+把 `config.yaml` 也提到 exe 旁边（PyInstaller 默认会把它塞进 `_internal\`，
+玩家打开文件夹看不到它）、把 mod 包（`build\tongyi-pak01_dir.vpk`）放进 `mod\`、
+然后压成 `build\tongyi-players.zip`（约 32MB）。最后它顺手把桥从 `build\.work\bridge\`
+**移动**到 `build\tongyi-launch\`（Steam 启动选项指向的就是这里），并清掉暂存区。
 
 玩家拿到后的三步：**解压 → 双击 `START_HERE.bat` → 按它的提示粘一次 Steam 启动选项**，
 之后正常点「开始游戏」就行。

@@ -1,0 +1,41 @@
+{
+  "_comment": [
+    "手工维护：英->中方向**不要注入提示词**的英文术语键。",
+    "为什么需要：glossary.json 是从游戏本地化文件自动生成的，里面有大量 UI 字符串",
+    "（cat=ui 有 2000 条）和技能名。问题在于很多键本身就是**日常英语词**，聊天里",
+    "天天出现，一命中就把提示词带偏。实测踩到的：",
+    "  care, they're flanking   -> 注入 They're=他们",
+    "  their shrine is down     -> 注入 Down=下",
+    "  walker on green          -> 注入 Green=绿路（vs slang 的 green 没有条目）",    "  nice fight               -> 注入 Fight=进攻（那是个技能名）",
+    "  kill the tank            -> 注入 Kill=击败",
+    "判据：这个键在**普通英语聊天**里出现时，它的游戏含义大概率不是说话人的意思。",
+    "注意别把真正的游戏术语加进来（stamina/urn/rejuv/souls/guardian 这些要留着）。"
+  ],
+  "block": [
+    "they're", "you're", "we're", "it's", "don't", "can't", "won't", "isn't", "i'm", "i'll",
+    "down", "up", "left", "right", "next", "prev", "back", "then", "used", "new", "old",
+    "move", "show", "skip", "stay", "none", "weak", "busy", "easy", "hard", "late", "rare",
+    "test", "name", "key", "type", "core", "fire", "jump", "join", "hide", "buy", "sell",
+    "win", "wins", "won", "loss", "draw", "rank", "team", "help", "wait", "hold", "care",
+    "time", "first", "last", "all", "one", "two", "good", "great", "nice", "fight", "kill",
+    "play", "gold", "iron", "away", "base", "cast", "flex", "peru", "asia", "news", "mods",
+    "menu", "edit", "zoom", "vote", "bug", "mid", "bot", "bots", "ping", "slow", "heal",
+    "stun", "burn", "sleep", "dash", "tank", "punch", "hook", "bomb", "club", "heart",
+    "spade", "bow", "rage", "fear", "rend", "spin", "tiny", "grit", "leech", "decay",
+    "bow", "punish", "haze", "lash", "ivy", "seven", "rem", "shiv", "swan", "mina",
+    "boho", "paige", "raven", "victor", "drifter", "trapper", "silver", "apollo", "celeste",
+    "grave", "graves", "warden", "wraith", "dynamo", "kelvin", "viscous", "pocket", "mirage",
+    "paradox", "abrams", "bebop", "calico", "infernus", "yamato", "holliday", "sinclair",
+    "fathom", "venator", "wrecker", "akimbo", "billy", "doorman", "vyper", "geist",
+    "green", "blue", "yellow", "purple", "orange", "red", "white", "black"
+  ],
+  "_comment_rules": [
+    "英雄/物品名放在这里不等于「不翻译它们」：它们的正式译名照样会通过术语表/slang 生效，",
+    "这里只是**不把单词本身当术语键**去注入提示词。",
+    "为什么英雄名也要挡：它们和日常英语词同形（Haze/Ivy/Silver/Graves/Rem/Seven/Doorman…），",
+    "聊天里出现同名普通词时会被强行解释成英雄名。",
+    "另外两条规则写在 dlchat/chat/glossary.py 的 _is_noise_term 里：",
+    "  · 含撇号的键一律不注入（本地化文件里 They're 这种是代词，不是术语）；",
+    "  · 命中黑名单的键一律不注入。"
+  ]
+}
