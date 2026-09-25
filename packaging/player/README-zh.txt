@@ -41,7 +41,7 @@
           https://deadlockmods.app
 
       打开 DMM → My Mods → 添加本地 mod
-      → 选中这个包里的  mod\  文件夹 → 起个名字 → 启用
+      → 选中这个包里的 mod\tongyi-pak01_dir.vpk 文件 → 起个名字 → 在「我的模组」里启用
 
   第 3 步  填一次翻译用的 Key
 

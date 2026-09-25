@@ -20,8 +20,8 @@
   1. 打开 Deadlock Mod Manager（下载：https://deadlockmods.app）
   2. 左边选 My Mods
   3. 点「添加本地 mod / 导入本地文件」
-  4. 选中**这个文件夹**（mod\），确认里面有 tongyi-pak01_dir.vpk
-  5. 起个名字，比如 通译，然后**启用**
+  4. 选中 mod\tongyi-pak01_dir.vpk **这个文件**
+  5. 起个名字，比如 通译，然后在「我的模组」里**启用**
   6. 之后用 DMM 的 Launch Modded 启动游戏
 
   如果 DMM 不接受这个文件名，把 tongyi- 前缀去掉、改成 pak01_dir.vpk 再导入

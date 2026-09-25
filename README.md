@@ -18,7 +18,7 @@
 
 1. 将 ZIP 解压到普通文件夹，避免放在 `Program Files`。
 2. 双击 `tongyi_launch\START_HERE.bat`。脚本会把 Steam 启动选项复制到剪贴板；在 Steam 中打开「库 → Deadlock → 属性 → 启动选项」，按 `Ctrl+V` 粘贴。
-3. 安装 [Deadlock Mod Manager（DMM）](https://deadlockmods.app/)。在 **My Mods → 添加本地 mod** 中选择解压后的 `mod` 文件夹，启用通译。
+3. 安装 [Deadlock Mod Manager（DMM）](https://deadlockmods.app/)。在 **My Mods → 添加本地 mod** 中选择解压后的 `mod\tongyi-pak01_dir.vpk` 文件，再到「我的模组」里启用通译。
 4. 通过 DMM 的 **Launch Modded** 启动游戏，再在浏览器打开 [本机设置页](http://localhost:8791/settings)，粘贴你的 DeepSeek API Key 并保存。设置页只在游戏运行、翻译桥启动后可访问。
 
 ## 使用

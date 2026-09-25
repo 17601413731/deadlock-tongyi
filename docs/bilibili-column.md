@@ -71,7 +71,7 @@ Steam → 库 → 右键 Deadlock → 属性 → 启动选项 → Ctrl+V 粘贴�
 
 第 3 步 装汉化补丁
 先下载 Deadlock Mod Manager（DMM，社区通用的 mod 管理器）：https://deadlockmods.app
-打开 → My Mods → 添加本地 mod → 选中压缩包里的 mod 文件夹 → 起个名字（比如"通译"）→ 启用。
+打开 → My Mods → 添加本地 mod → 选中压缩包里的 mod\tongyi-pak01_dir.vpk 文件 → 起个名字（比如"通译"）→ 在「我的模组」里启用。
 
 第 4 步 填一次翻译用的 Key
 先开一次游戏，然后浏览器打开：
