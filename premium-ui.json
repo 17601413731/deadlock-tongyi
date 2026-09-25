@@ -1,0 +1,9 @@
+{
+  "profile": "game-mod",
+  "sourceRoots": ["mod/panorama"],
+  "locale": "zh-CN",
+  "requiredCommands": ["panorama"],
+  "commands": {
+    "panorama": "node scripts/js_check.js"
+  }
+}

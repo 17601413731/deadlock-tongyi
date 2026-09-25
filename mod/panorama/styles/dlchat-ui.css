@@ -1,0 +1,288 @@
+/* 通译控制面板。此文件是游戏内设置 UI 的唯一视觉样式来源。
+   色彩与布局决策见项目根目录 DESIGN.md。 */
+
+.DLChatDot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-left: 8px;
+	margin-right: 3px;
+	vertical-align: center;
+	background-color: #718b9b;
+}
+.DLChatDot.DLChatDotOk { background-color: #78c9bb; }
+.DLChatDot.DLChatDotWarn { background-color: #e7b26c; }
+.DLChatDot.DLChatDotBad { background-color: #df8279; }
+
+.DLChatGear {
+	margin-left: 7px;
+	padding: 4px 11px;
+	vertical-align: center;
+	background-color: rgba(19, 29, 41, 0.92);
+	border: 1px solid #466176;
+	border-radius: 6px;
+}
+.DLChatGear:hover, .DLChatGear:focus {
+	background-color: #203246;
+	border-color: #76c7d8;
+}
+.DLChatGear Label {
+	color: #e9f4f5;
+	font-size: 13px;
+	font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+.DLChatSettings {
+	visibility: collapse;
+	width: 510px;
+	height: 680px;
+	horizontal-align: center;
+	vertical-align: center;
+	flow-children: down;
+	background-color: #131d29;
+	border: 1px solid #466176;
+	border-radius: 12px;
+	box-shadow: 0px 16px 38px rgba(0, 0, 0, 0.64);
+	font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+.DLChatSettings.DLChatSettingsOpen { visibility: visible; }
+
+.DLChatSetHeader {
+	width: 100%;
+	height: 90px;
+	padding: 12px 18px;
+	flow-children: right;
+	background-color: #1b2938;
+	border-bottom: 1px solid #395467;
+}
+.DLChatSetBrand {
+	width: fill-parent-flow(1.0);
+	flow-children: down;
+}
+.DLChatSetHeaderActions {
+	width: 166px;
+	height: 34px;
+	flow-children: right;
+	vertical-align: center;
+}
+.DLChatSetEyebrow {
+	color: #76c7d8;
+	font-family: "Arial", sans-serif;
+	font-size: 10px;
+	letter-spacing: 2px;
+}
+.DLChatSetTitle {
+	color: #e9f4f5;
+	font-size: 24px;
+	font-weight: bold;
+	margin-top: 1px;
+}
+.DLChatSetSubtitle {
+	color: #9db2bf;
+	font-size: 12px;
+	margin-top: 1px;
+}
+.DLChatSetClose {
+	width: 52px;
+	height: 34px;
+	vertical-align: center;
+	background-color: #203246;
+	border: 1px solid #466176;
+	border-radius: 6px;
+}
+.DLChatSetClose:hover, .DLChatSetClose:focus {
+	background-color: #30485d;
+	border-color: #76c7d8;
+}
+.DLChatSetClose Label {
+	color: #d6e8ed;
+	font-size: 12px;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+.DLChatSetBody {
+	width: 100%;
+	height: fill-parent-flow(1.0);
+	flow-children: down;
+	padding: 13px 16px;
+	overflow: squish scroll;
+}
+.DLChatSetSection {
+	width: 100%;
+	flow-children: down;
+	padding: 11px 13px 8px 13px;
+	margin-bottom: 11px;
+	background-color: #1b2938;
+	border: 1px solid #30495c;
+	border-radius: 8px;
+}
+.DLChatSetSectionPrimary {
+	background-color: #203246;
+	border-left: 3px solid #76c7d8;
+}
+.DLChatSetSectionHead {
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 5px;
+}
+.DLChatSetSectionTitle {
+	color: #e9f4f5;
+	font-size: 14px;
+	font-weight: bold;
+}
+.DLChatSetSectionHint {
+	horizontal-align: right;
+	vertical-align: center;
+	color: #9db2bf;
+	font-size: 11px;
+}
+.DLChatSetRow {
+	width: 100%;
+	height: 38px;
+	flow-children: right;
+	border-bottom: 1px solid rgba(157, 178, 191, 0.14);
+}
+.DLChatSetRow:hover { background-color: rgba(118, 199, 216, 0.07); }
+.DLChatSetRowTall { height: 44px; }
+.DLChatSetKey {
+	color: #d6e8ed;
+	font-size: 13px;
+	vertical-align: center;
+}
+.DLChatSetVal {
+	horizontal-align: right;
+	vertical-align: center;
+	min-width: 110px;
+	padding: 5px 9px;
+	background-color: #263b4e;
+	border: 1px solid #466176;
+	border-radius: 5px;
+}
+.DLChatSetVal:hover, .DLChatSetVal:focus {
+	background-color: #304b60;
+	border-color: #76c7d8;
+}
+.DLChatSetVal Label {
+	color: #e9f4f5;
+	font-size: 12px;
+	horizontal-align: center;
+}
+.DLChatSetVal.DLChatValueOn {
+	background-color: #264e56;
+	border-color: #5eacac;
+}
+.DLChatSetVal.DLChatValueOff Label { color: #a7bac5; }
+.DLChatRowHidden { visibility: collapse; }
+
+.DLChatSetModelBtn { min-width: 190px; }
+.DLChatSetModelBtn Label { color: #c4eef0; }
+.DLChatSetModelList {
+	visibility: collapse;
+	width: 100%;
+	max-height: 150px;
+	flow-children: down;
+	overflow: squish scroll;
+	margin-top: 4px;
+	padding: 4px;
+	background-color: #101b27;
+	border: 1px solid #466176;
+	border-radius: 6px;
+}
+.DLChatSetModelListOpen { visibility: visible; }
+.DLChatModelBtn {
+	width: 100%;
+	padding: 6px 9px;
+	margin-bottom: 2px;
+	background-color: #1b2938;
+	border: 1px solid #30495c;
+	border-radius: 4px;
+}
+.DLChatModelBtn:hover, .DLChatModelBtn:focus { border-color: #76c7d8; }
+.DLChatModelBtn.DLChatModelOn {
+	background-color: #264e56;
+	border-color: #5eacac;
+}
+.DLChatModelBtn Label { color: #e9f4f5; font-size: 12px; }
+
+.DLChatSetDiagnostics { background-color: #172633; }
+.DLChatSetStatus {
+	color: #b7ccd5;
+	font-size: 12px;
+	white-space: normal;
+	margin-top: 3px;
+}
+.DLChatSetTest {
+	color: #a7dfd5;
+	font-size: 12px;
+	white-space: normal;
+	margin-top: 4px;
+}
+.DLChatSetFailRow { height: fit-children; margin-top: 6px; border-bottom: 0px; }
+.DLChatSetFailRow .DLChatSetKey { color: #e7b26c; width: 66px; }
+.DLChatSetFailText {
+	color: #f0c998;
+	font-size: 12px;
+	max-width: 390px;
+	white-space: normal;
+}
+
+.DLChatSetFooter {
+	width: 100%;
+	height: 52px;
+	flow-children: right;
+	padding: 8px 16px;
+	background-color: #1b2938;
+	border-top: 1px solid #395467;
+}
+.DLChatBtnPrimary, .DLChatBtn {
+	vertical-align: center;
+	padding: 6px 11px;
+	margin-right: 7px;
+	border-radius: 5px;
+}
+.DLChatBtnPrimary {
+	width: 98px;
+	height: 34px;
+	padding: 0px;
+	background-color: #203246;
+	border: 1px solid #5b92a1;
+	border-radius: 6px;
+}
+.DLChatBtnPrimary:hover, .DLChatBtnPrimary:focus {
+	background-color: #304b60;
+	border-color: #96dae5;
+}
+.DLChatBtnPrimary.DLChatSaveDirty {
+	background-color: #76c7d8;
+	border-color: #96dae5;
+}
+.DLChatBtnPrimary.DLChatSaveDirty:hover, .DLChatBtnPrimary.DLChatSaveDirty:focus {
+	background-color: #96dae5;
+}
+.DLChatBtnPrimary Label {
+	color: #d6eef3;
+	font-size: 14px;
+	font-weight: bold;
+	horizontal-align: center;
+	vertical-align: center;
+	text-align: center;
+}
+.DLChatBtnPrimary.DLChatSaveDirty Label { color: #10202d; }
+.DLChatBtn {
+	background-color: #263b4e;
+	border: 1px solid #466176;
+}
+.DLChatBtn:hover, .DLChatBtn:focus {
+	background-color: #304b60;
+	border-color: #76c7d8;
+}
+.DLChatBtn Label { color: #e9f4f5; font-size: 12px; }
+
+.DLChatStatus {
+	color: #c4eef0;
+	font-size: 13px;
+	text-shadow: 1px 1px 2px #000000;
+	margin-left: 8px;
+	margin-bottom: 3px;
+}

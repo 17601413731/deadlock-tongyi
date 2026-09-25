@@ -87,6 +87,7 @@ REQUIRED_PATHS = (
     "panorama/layout/citadel_hud_top_bar_chat.vxml_c",
     "panorama/scripts/dlchat.vjs_c",
     "panorama/styles/dlchat.vcss_c",
+    "panorama/styles/dlchat-ui.vcss_c",
 )
 
 

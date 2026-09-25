@@ -753,6 +753,20 @@
 			var pname = this.providerName();
 			this.setText("DLChatSet_provider_l",
 				(this.PROVIDER.label[pname] || pname));
+			var toggles = {
+				DLChatSet_receive: s.receive_enabled,
+				DLChatSet_send: s.send_enabled,
+				DLChatSet_hover: s.show_original_on_hover,
+				DLChatSet_glossary: s.glossary
+			};
+			for (var id in toggles) {
+				var control = this.el(id);
+				setClass(control, "DLChatValueOn", !!toggles[id]);
+				setClass(control, "DLChatValueOff", !toggles[id]);
+			}
+			var saveButton = this.el("DLChatSetSave");
+			setClass(saveButton, "DLChatSaveDirty", !!this.dirty);
+			this.setText("DLChatSetSaveLabel", this.dirty ? "保存更改" : "保存设置");
 			// 云端来源里"模型常驻"没有意义（那是 Ollama 的 keep_alive），收起来，
 			// 免得摆一个点了没反应的开关。
 			var keepRow = this.el("DLChatSetRow6");
@@ -976,9 +990,10 @@
 				beText = " · 模型 " + s.vram + "% 在显存"
 					+ (s.vram < 99 ? "（部分在 CPU，会变慢）" : "");
 			}
-			return "设置来源：" + (this.persisted ? "设置文件（保存后重启依然有效）"
-					: "默认值（还没保存过）")
-				+ " · 桥：" + (bus.bridgeUp ? "在线" : "离线")
+			var link = bus.bridgeUp ? "已连通"
+				: (bus.consecutiveFailures >= 2 ? "当前界面暂未连通" : "检测中");
+			return "设置来源：" + (this.persisted ? "已保存" : "默认值")
+				+ " · 连接：" + link
 				+ beText
 				+ " · 请求 " + (s.req || 0) + " / 命中 " + (s.hit || 0)
 				+ " · 延迟 英→中 " + (s.latIn ? s.latIn + "ms" : "-")
@@ -1111,6 +1126,39 @@
 					+ " queued=" + bus.queue.length
 					+ " panel=" + !!bus.findPanel();
 			} catch (e) { return "bus_probe_threw:" + e; }
+		};
+		globalThis.DLChatSelfTestConnection = function () {
+			var oldUp = bus.bridgeUp, oldFailures = bus.consecutiveFailures;
+			var label = status.el(), oldText = readText(label), oldHideAt = status.hideAt;
+			var panelStatus = ui.el("DLChatSetStatus"), oldPanelText = readText(panelStatus);
+			var dot = ui.el("DLChatDot"), out = [];
+			function check(name, up, failures, res, phrase, cls) {
+				bus.bridgeUp = up;
+				bus.consecutiveFailures = failures;
+				updateDot();
+				showHealthResult(res);
+				var actual = readText(label);
+				out.push(name + ":" + (actual.indexOf(phrase) !== -1
+					&& hasClass(dot, cls) ? "ok" : "FAIL(" + actual + ")"));
+			}
+			try {
+				check("transient", true, 1, { ok: false, error: "timeout" },
+					"可用", "DLChatDotWarn");
+				check("checking", false, 1, { ok: false, error: "timeout" },
+					"确认连接", "DLChatDotWarn");
+				check("unavailable", false, 2, { ok: false, error: "timeout" },
+					"当前界面暂未连通", "DLChatDotBad");
+				check("recovered", true, 0, { ok: true },
+					"就绪", "DLChatDotOk");
+			} finally {
+				bus.bridgeUp = oldUp;
+				bus.consecutiveFailures = oldFailures;
+				updateDot();
+				if (label) writeText(label, oldText);
+				if (panelStatus) writeText(panelStatus, oldPanelText);
+				status.hideAt = oldHideAt;
+			}
+			return out.join(" | ");
 		};
 		globalThis.DLChatSelfTestProbe = function (row) {
 			try {
@@ -1576,10 +1624,11 @@
 		var dot = ui.el("DLChatDot");
 		if (!dot) return;
 		var up = bus.bridgeUp;
-		var degraded = up && bus.consecutiveFailures > 0;
+		var degraded = (up && bus.consecutiveFailures > 0)
+			|| (!up && bus.consecutiveFailures > 0 && bus.consecutiveFailures < 2);
 		setClass(dot, "DLChatDotOk", up && !degraded);
 		setClass(dot, "DLChatDotWarn", degraded);
-		setClass(dot, "DLChatDotBad", !up);
+		setClass(dot, "DLChatDotBad", !up && bus.consecutiveFailures >= 2);
 	}
 
 	function diag() {
@@ -3392,18 +3441,26 @@
 		return e.substring(0, 24);
 	}
 
-	function healthTick() {
-		bus.send("health", null, REQUEST_TIMEOUT, function (res) {
+	function showHealthResult(res) {
 			if (res && res.ok) {
 				status.show(channel.mode === "http" ? "通译 就绪（直连）"
 					: "通译 就绪（面板）", 4);
+			} else if (bus.bridgeUp) {
+				// 单次探测失败不能推翻同一界面的成功翻译。
+				status.show("通译 可用 · 状态检测稍后重试", 5);
+			} else if (bus.consecutiveFailures < 2) {
+				status.show("通译 正在确认连接…", 5);
 			} else {
-				// 把诊断码一起显示出来：看一眼截图就能知道卡在哪一段
-				status.show("通译 桥不通：" + shortError(res && res.error)
+				// 两个布局各有独立通道；只报告当前界面，不能断言整个桥已停。
+				status.show("通译 当前界面暂未连通，正在重试", 8);
+				ui.status("当前界面连接诊断：" + shortError(res && res.error)
 					+ (channel.panelDead ? " · 面板失效" : "")
-					+ " [" + diag() + "]", 20);
+					+ " [" + diag() + "]");
 			}
-		});
+	}
+
+	function healthTick() {
+		bus.send("health", null, REQUEST_TIMEOUT, showHealthResult);
 	}
 
 	function boot() {

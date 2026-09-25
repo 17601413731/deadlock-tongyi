@@ -36,6 +36,7 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const JS_PATH = path.join(root, "mod", "panorama", "scripts", "dlchat.js");
 const CSS_PATH = path.join(root, "mod", "panorama", "styles", "dlchat.css");
+const UI_CSS_PATH = path.join(root, "mod", "panorama", "styles", "dlchat-ui.css");
 const LAYOUTS = [
   path.join(root, "mod", "panorama", "layout", "chat.xml"),
   path.join(root, "mod", "panorama", "layout", "citadel_hud_top_bar_chat.xml"),
@@ -56,6 +57,7 @@ const REQUIRED_HOOKS = [
   "DLChatSelfTest", "DLChatSelfTestCompact", "DLChatSelfTestQueue",
   "DLChatSelfTestRows", "DLChatSelfTestAttach", "DLChatSelfTestInline",
   "DLChatSelfTestPending", "DLChatSelfTestPendingFail",
+  "DLChatSelfTestConnection",
 ];
 // 布局里出现过的设置键都点一遍（解析布局时会补上布局真正绑定的那些键）
 const SETTING_KEYS = [
@@ -500,6 +502,30 @@ section("启动", function () {
 
 // ================================================================ ② 布局契约
 section("布局契约", function () {
+  const chatLayout = layoutFiles.find((item) => item.file === LAYOUTS[0]);
+  expect("布局契约: 设置界面的样式必须由聊天布局加载",
+    !!chatLayout && chatLayout.xml.indexOf("panorama/styles/dlchat-ui.vcss_c") !== -1
+      && fs.existsSync(UI_CSS_PATH), "dlchat-ui.css 未加载或不存在");
+  if (chatLayout && fs.existsSync(UI_CSS_PATH)) {
+    const xml = chatLayout.xml;
+    const css = fs.readFileSync(UI_CSS_PATH, "utf8");
+    const panelRule = css.match(/\.DLChatSettings\s*\{([^}]*)\}/);
+    const bodyRule = css.match(/\.DLChatSetBody\s*\{([^}]*)\}/);
+    const saveLabelRule = css.match(/\.DLChatBtnPrimary Label\s*\{([^}]*)\}/);
+    expect("布局契约: 保存按钮必须位于滚动区之前的固定页头",
+      xml.indexOf('id="DLChatSetSave"') > 0
+        && xml.indexOf('id="DLChatSetSave"') < xml.indexOf('class="DLChatSetBody"'),
+      "保存按钮可能被内容区挤出屏幕");
+    expect("布局契约: 内容区必须占用固定面板的剩余高度并滚动",
+      !!panelRule && /\bheight\s*:\s*\d+px\s*;/.test(panelRule[1])
+        && !!bodyRule && /height\s*:\s*fill-parent-flow\(1\.0\)/.test(bodyRule[1])
+        && /overflow\s*:\s*squish scroll/.test(bodyRule[1]),
+      "面板高度或内容区滚动约束缺失");
+    expect("布局契约: 保存按钮文字必须水平和垂直居中",
+      !!saveLabelRule && /horizontal-align\s*:\s*center/.test(saveLabelRule[1])
+        && /vertical-align\s*:\s*center/.test(saveLabelRule[1]),
+      "保存按钮文字可能贴在左上角");
+  }
   const ours = [];
   for (const name of layoutHandlers) {
     if (VANILLA_HANDLER.test(name)) continue;      // 原版自带函数，跳过
@@ -539,12 +565,13 @@ section("自检钩子", function () {
   };
   selfTest("DLChatSelfTestCompact", compact);
   selfTest("DLChatSelfTestQueue");
+  selfTest("DLChatSelfTestConnection");
   // 状态行必须真的被写进布局里那个标签（脚本和布局的 id 对不上时这里是空的）
   const st = contextPanel.FindChildTraverse("DLChatSetStatus");
   const stText = st ? String(st.text) : "";
   expect("自检钩子: 设置面板状态行要显示桥信息（布局 id 对不上时这里是空的）",
     stText.indexOf("Key") !== -1, "DLChatSetStatus=" + JSON.stringify(stText));
-  note("自检钩子：DLChatSelfTest / Compact（真实短键响应）/ Queue 全部无 FAIL");
+  note("自检钩子：设置短键、队列与连接状态全部无 FAIL");
 });
 
 // ================================================================ ④ 识别层

@@ -18,6 +18,7 @@
 		<include src="s2r://panorama/styles/chat.vcss_c" />
 		<!-- [通译] -->
 		<include src="s2r://panorama/styles/dlchat.vcss_c" />
+		<include src="s2r://panorama/styles/dlchat-ui.vcss_c" />
 	</styles>
 	<!-- [通译] -->
 	<scripts>
@@ -90,25 +91,45 @@
 		     开关/循环全部本地即时生效，只有「保存并生效」和「试翻」会走网络。 -->
 		<Panel id="DLChatSettings" class="DLChatSettings" hittest="true">
 			<Panel class="DLChatSetHeader">
-				<Label class="DLChatSetTitle" text="通译 · 聊天翻译设置" />
-				<Button id="DLChatSetClose" class="DLChatSetClose" onactivate="DLChatCloseSettings();">
-					<Label text="关闭" />
-				</Button>
+				<Panel class="DLChatSetBrand">
+					<Label class="DLChatSetEyebrow" text="TONGYI / DEADLOCK" />
+					<Label class="DLChatSetTitle" text="聊天翻译" />
+					<Label class="DLChatSetSubtitle" text="对局内快速调整，保存后立即生效" />
+				</Panel>
+				<Panel class="DLChatSetHeaderActions">
+					<Button id="DLChatSetSave" class="DLChatBtnPrimary" onactivate="DLChatSaveSettings();">
+						<Label id="DLChatSetSaveLabel" text="保存设置" />
+					</Button>
+					<Button id="DLChatSetClose" class="DLChatSetClose" onactivate="DLChatCloseSettings();">
+						<Label text="关闭" />
+					</Button>
+				</Panel>
 			</Panel>
 
 			<Panel class="DLChatSetBody">
+				<Panel class="DLChatSetSection DLChatSetSectionPrimary">
+					<Panel class="DLChatSetSectionHead">
+						<Label class="DLChatSetSectionTitle" text="收与发" />
+						<Label class="DLChatSetSectionHint" text="两条翻译方向独立控制" />
+					</Panel>
 				<Panel id="DLChatSetRow1" class="DLChatSetRow" onmouseactivate="DLChatToggle('receive_enabled');">
-					<Label class="DLChatSetKey" text="翻译收到的消息（英 → 中）" />
+					<Label class="DLChatSetKey" text="收到的消息 · 英 → 中" />
 					<Button id="DLChatSet_receive" class="DLChatSetVal" onactivate="DLChatToggle('receive_enabled');">
 						<Label id="DLChatSet_receive_l" text="开" />
 					</Button>
 				</Panel>
 				<Panel id="DLChatSetRow2" class="DLChatSetRow" onmouseactivate="DLChatToggle('send_enabled');">
-					<Label class="DLChatSetKey" text="中文输入转英文（中 → 英）" />
+					<Label class="DLChatSetKey" text="我的输入 · 中 → 英" />
 					<Button id="DLChatSet_send" class="DLChatSetVal" onactivate="DLChatToggle('send_enabled');">
 						<Label id="DLChatSet_send_l" text="开" />
 					</Button>
 				</Panel>
+				</Panel>
+				<Panel class="DLChatSetSection">
+					<Panel class="DLChatSetSectionHead">
+						<Label class="DLChatSetSectionTitle" text="聊天呈现" />
+						<Label class="DLChatSetSectionHint" text="选择译文的样子与触发方式" />
+					</Panel>
 				<Panel id="DLChatSetRow3" class="DLChatSetRow" onmouseactivate="DLChatCycle('display_mode');">
 					<Label class="DLChatSetKey" text="译文显示（收到的消息）" />
 					<Button id="DLChatSet_display" class="DLChatSetVal" onactivate="DLChatCycle('display_mode');">
@@ -151,6 +172,12 @@
 						<Label id="DLChatSet_ctx_l" text="带 1 轮（推荐）" />
 					</Button>
 				</Panel>
+				</Panel>
+				<Panel class="DLChatSetSection">
+					<Panel class="DLChatSetSectionHead">
+						<Label class="DLChatSetSectionTitle" text="翻译引擎" />
+						<Label class="DLChatSetSectionHint" text="本地运行或使用云端服务" />
+					</Panel>
 				<!-- [dlchat] 翻译来源：本地 Ollama（不出网）/ DeepSeek 云端（聊天内容会出网）。
 				     放在「模型常驻」之前：来源决定下面那个模型列表里有什么，也决定常驻有没有意义。 -->
 				<Panel id="DLChatSetRowProvider" class="DLChatSetRow" onmouseactivate="DLChatCycle('provider');">
@@ -182,9 +209,14 @@
 					</Button>
 				</Panel>
 				<Panel id="DLChatSetModelList" class="DLChatSetModelList" />
+				</Panel>
 
-				<Label id="DLChatSetStatus" class="DLChatSetStatus" text="读取中…" />
-				<Label id="DLChatSetTest" class="DLChatSetTest" text="" />
+				<Panel class="DLChatSetSection DLChatSetDiagnostics">
+					<Panel class="DLChatSetSectionHead">
+						<Label class="DLChatSetSectionTitle" text="连接与诊断" />
+					</Panel>
+					<Label id="DLChatSetStatus" class="DLChatSetStatus" text="读取中…" />
+					<Label id="DLChatSetTest" class="DLChatSetTest" text="" />
 				<!-- [dlchat] 最近一次失败的原因：状态行那句提示几秒就没了，打团时根本
 				     顾不上看。这一行留着，直到下一次翻译成功才消失 —— 否则你只知道
 				     "刚才没翻出来"，不知道是没配 Key、被限流、还是桥没开。 -->
@@ -192,13 +224,10 @@
 					<Label class="DLChatSetKey" text="最近错误" />
 					<Label id="DLChatSetFail" class="DLChatSetFailText" text="" />
 				</Panel>
-				<Label class="DLChatSetLegend" text="点击右侧开关/模型切换 · 保存后立即生效" />
+				</Panel>
 			</Panel>
 
 			<Panel class="DLChatSetFooter">
-				<Button id="DLChatSetSave" class="DLChatBtnPrimary" onactivate="DLChatSaveSettings();">
-					<Label text="保存并生效" />
-				</Button>
 				<Button id="DLChatSetTestBtn" class="DLChatBtn" onactivate="DLChatTestSettings();">
 					<Label text="试翻一句" />
 				</Button>
