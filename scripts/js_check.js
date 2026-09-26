@@ -57,7 +57,7 @@ const REQUIRED_HOOKS = [
   "DLChatSelfTest", "DLChatSelfTestCompact", "DLChatSelfTestQueue",
   "DLChatSelfTestRows", "DLChatSelfTestAttach", "DLChatSelfTestInline",
   "DLChatSelfTestPending", "DLChatSelfTestPendingFail",
-  "DLChatSelfTestConnection",
+  "DLChatSelfTestConnection", "DLChatSelfTestSettlement",
 ];
 // 布局里出现过的设置键都点一遍（解析布局时会补上布局真正绑定的那些键）
 const SETTING_KEYS = [
@@ -301,12 +301,17 @@ const pokeKeys = Array.from(new Set([...SETTING_KEYS,
 
 // ---------------------------------------------------------------- $. 桩
 const scheduled = [];         // $.Schedule 排的回调（boot 就靠它启动）
+const deferredTimeouts = [];  // 长看门狗不在下一轮立即执行（离线轮次不代表真实时间）
 const unhandledEvents = {};   // RegisterForUnhandledEvent 注册的事件
 const keyBinds = [];          // RegisterKeyBind 结果（F8 热键能不能绑上看它）
 
 global.$ = {
   GetContextPanel: () => contextPanel,
-  Schedule: (seconds, fn) => { if (typeof fn === "function") scheduled.push(fn); },
+  Schedule: (seconds, fn) => {
+    if (typeof fn !== "function") return;
+    if (seconds >= 30) deferredTimeouts.push(fn);
+    else scheduled.push(fn);
+  },
   CreatePanel: (type, parent, id) => {
     const p = makePanel(id, type);
     if (parent && Array.isArray(parent.Children)) { p._parent = parent; parent.Children.push(p); }
@@ -566,6 +571,7 @@ section("自检钩子", function () {
   selfTest("DLChatSelfTestCompact", compact);
   selfTest("DLChatSelfTestQueue");
   selfTest("DLChatSelfTestConnection");
+  selfTest("DLChatSelfTestSettlement");
   // 状态行必须真的被写进布局里那个标签（脚本和布局的 id 对不上时这里是空的）
   const st = contextPanel.FindChildTraverse("DLChatSetStatus");
   const stText = st ? String(st.text) : "";

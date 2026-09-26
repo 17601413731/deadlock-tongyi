@@ -635,6 +635,8 @@ class BridgeApp:
         用途：出现"连续超时"时，最可能的原因是显存被游戏挤爆、模型被丢到 CPU。
         把这个报出来，游戏内面板就能直接显示，不用靠猜。
         """
+        if self.settings.provider != "local":
+            return {}                 # 云端没有 Ollama /api/ps，不能绕过代理去探测它
         base = (self.settings.base_url or "").rstrip("/")
         root = base[:-3] if base.endswith("/v1") else base
         if not root:
@@ -761,8 +763,8 @@ class BridgeApp:
             "model": self.settings.model,
             "providerLabel": provider_label(self.settings.provider),
             "keySet": is_key_set(self.settings),
-            # 模型在不在显存里、跑 GPU 还是 CPU —— 排查"翻译时好时坏"的关键信息
-            "backend": self.backend_status(),
+            # 健康检查必须立即返回；显存信息在读取设置时单独探测。
+            "backend": {},
             "glossary": {"terms": len(self.glossary.terms),
                          "phrases": len(self.glossary.phrases),
                          "slang": len(self.glossary.slang)},

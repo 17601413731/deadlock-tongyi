@@ -1455,6 +1455,34 @@
 			}
 			return out.join(" ");
 		};
+		globalThis.DLChatSelfTestSettlement = function () {
+			var text = "selftest-settle-once";
+			var previousFailure = lastFailure;
+			var previousAlive = channel.pageAlive;
+			var result = [];
+			try {
+				lastFailure = { text: "", at: 0 };
+				var rec = { pending: true, panel: null, contents: null, fails: 0 };
+				settleRowText(text, "已译", [rec], { ok: true });
+				result.push("success:" + (!rec.pending && !lastFailure.text ? "ok" : "FAIL"));
+				settleRowText(text, "", [rec], null); // 已收尾的行不能再报“桥没响应”
+				result.push("duplicate:" + (!lastFailure.text ? "ok" : "FAIL"));
+
+				var job = { op: "translate" }, calls = 0;
+				var fake = { inflight: job, panel: null, applyResult: function () { calls += 1; } };
+				channel.pageAlive = true;
+				bus.timeoutPanel.call(fake, job);
+				bus.timeoutPanel.call(fake, job);
+				result.push("timeoutOnce:" + (calls === 1 && !fake.inflight ? "ok" : "FAIL"));
+			} catch (e) {
+				result.push("threw:FAIL(" + e + ")");
+			} finally {
+				cacheForget(text);
+				lastFailure = previousFailure;
+				channel.pageAlive = previousAlive;
+			}
+			return result.join(" | ");
+		};
 
 		// 本轮新增的三块逻辑也拉进离线测试台：都是"纯计算"，不需要桥在线。
 		//   · 输入正文的清洗（换行/连续空格）
@@ -1989,7 +2017,23 @@
 				return;
 			}
 			var self = this;
+			// poll 依赖面板定时器持续运行；单独留一个看门狗，防止轮询中断后队列卡死。
+			// 以真正开始导航为起点计时，排队等待不算进单请求超时。
+			try { $.Schedule(timeout + 0.5, function () { self.timeoutPanel(job); }); } catch (e) {}
 			try { $.Schedule(TITLE_POLL_SECONDS, function () { self.poll(); }); } catch (e) {}
+		},
+
+		timeoutPanel: function (job) {
+			if (this.inflight !== job) return;        // 已收到结果或已由 poll 判超时
+			this.inflight = null;
+			if (!channel.pageAlive) {
+				channel.panelDead = true;
+				this.panel = null;
+			}
+			this.applyResult(job, {
+				ok: false,
+				error: channel.pageAlive ? "timeout_no_response" : "timeout_no_page"
+			});
 		},
 
 		poll: function () {
@@ -2009,17 +2053,7 @@
 				}
 			}
 			if (nowSeconds() > cur.deadline) {
-				this.inflight = null;
-				// 整个请求周期里连存活标记都没见过 -> 面板导航等于没生效
-				if (!channel.pageAlive) {
-					channel.panelDead = true;
-					// 别继续抱着这个面板对象：换个引用再试（实测有"死面板"这回事）
-					this.panel = null;
-				}
-				this.applyResult(cur, {
-					ok: false,
-					error: channel.pageAlive ? "timeout_no_response" : "timeout_no_page"
-				});
+				this.timeoutPanel(cur);
 				return;
 			}
 			var self = this;
@@ -2969,31 +3003,23 @@
 			var list = pendingByText[text] || [];
 			delete pendingByText[text];                // 所有权转移给这一批（重排队会另开一批）
 			var out = (res && res.ok && res.translation) ? res.translation : "";
-			// 兜底：渠道回包彻底丢了时，靠一个定时器把**这一批**收干净。
-			// 不清的话：pending 一直是 true -> 占位永远转 -> 这一行再也不会被重试。
-			// 传的是闭包里的 list（不是按 text 再查一次）：同一句话可能已经开了新的一批，
-			// 按 text 查会把新批次误伤 —— 而且 `if (!one.pending) continue` 保证已收尾的
-			// 一条不会被处理第二遍。
-			try {
-				$.Schedule(REQUEST_TIMEOUT + PENDING_SETTLE_BUMP, function () {
-					try { settleRowText(text, "", list, null); } catch (e) {}
-				});
-			} catch (e) {}
 			settleRowText(text, out, list, res);
 		});
 	}
 
 	// 一批等待者的收尾：翻好了贴译文，没翻出来按"有界重试"处理。
-	// 从 bus 回调里抽出来，是因为还有个定时器兜底也要走同一条路（见 translateRowText）。
+	// 超时由 bus 在请求真正发出后处理，回调到这里时只收尾仍在等待的行。
 	// ⚠ 别在这里 delete pendingByText[text]：同一句话可能在收尾之后马上开了**新的一批**
 	// （失败重排队），按 text 删会把新批次从表里摘掉，后面的同句消息就挂不上去了。
 	// 列表的所有权归调用方：回调捕获 list 时就把它从表里摘下来。
 	function settleRowText(text, out, list, res) {
 		if (!list) return;
+		var settled = false;
 		for (var i = 0; i < list.length; i++) {
 			var one = list[i];
 			if (!one.pending) continue;                // 已经被别的路径收掉了，别重复处理
 			one.pending = false;
+			settled = true;
 			if (out) {
 				one.fails = 0;
 				applyTranslation(one, out);
@@ -3007,6 +3033,7 @@
 				one.failed = (one.fails <= MAX_ROW_RETRY);
 			}
 		}
+		if (!settled) return;                         // 迟到的兜底/回包不能制造一次失败
 		if (out) {
 			cachePut(text, out);
 			clearFailure();

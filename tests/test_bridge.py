@@ -209,6 +209,27 @@ class AppLogicTest(unittest.TestCase):
             self.assertIn(key, h)
         self.assertIn("terms", h["glossary"])
 
+    def test_health_does_not_wait_for_translation_backend(self):
+        app = _app()
+        for provider, base_url in (("local", "http://localhost:11434/v1"),
+                                   ("deepseek", "https://api.deepseek.com/v1")):
+            with self.subTest(provider=provider):
+                app.settings = AppSettings(provider=provider, base_url=base_url,
+                                           model="test-model")
+                with mock.patch.object(app, "backend_status",
+                                       side_effect=AssertionError("health probed backend")):
+                    self.assertTrue(app.health()["ok"])
+
+    def test_cloud_settings_do_not_probe_ollama(self):
+        app = _app()
+        app.settings = AppSettings(provider="deepseek", model="deepseek-flash",
+                                   base_url="https://api.deepseek.com/v1")
+        with mock.patch("dlchat.bridge.server._no_proxy_opener",
+                        side_effect=AssertionError("cloud called Ollama probe")):
+            self.assertEqual(app.backend_status(), {})
+            self.assertEqual(app.settings_view(compact=True)["vram"], -1)
+            self.assertEqual(app.settings_view()["backend"], {})
+
     def test_health_reports_which_files_are_in_use(self):
         """"我改了怎么没反应"要能问出答案。
 
